@@ -1,0 +1,2566 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LinguaSpark — Personal English learner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50:'#ecfdf5',100:'#d1fae5',200:'#a7f3d0',300:'#6ee7b7',400:'#34d399',
+            500:'#10b981',600:'#059669',700:'#047857',800:'#065f46',900:'#064e3b',
+          },
+        },
+        fontFamily: {
+          sans: ['Inter','ui-sans-serif','system-ui','sans-serif'],
+          display: ['"Fraunces"','Georgia','serif'],
+          mono: ['"JetBrains Mono"','ui-monospace','monospace'],
+        },
+        boxShadow: {
+          card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)',
+          pop:  '0 10px 25px rgba(16,24,40,.08), 0 4px 10px rgba(16,24,40,.06)',
+          glow: '0 0 0 4px rgba(16,185,129,.15)',
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :focus-visible { outline: 2px solid #10b981; outline-offset: 2px; border-radius: 8px; }
+  .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.06) 25%, rgba(0,0,0,.12) 37%, rgba(0,0,0,.06) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: 6px; }
+  .dark .skeleton { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 37%, rgba(255,255,255,.06) 63%); background-size: 400% 100%; }
+  @keyframes shimmer { 0% { background-position: 100% 0 } 100% { background-position: 0 0 } }
+  @keyframes reveal { from { opacity:0; transform: translateY(4px) } to { opacity:1; transform: none } }
+  .reveal { animation: reveal .35s ease both; }
+  .hero-grad { background-image: radial-gradient(ellipse at top, rgba(16,185,129,.12), transparent 60%); }
+  .dark .hero-grad { background-image: radial-gradient(ellipse at top, rgba(16,185,129,.18), transparent 60%); }
+
+  .chip { display:inline-flex; align-items:center; padding:.375rem .75rem; border-radius:9999px; background:rgb(255 255 255 / .7); border:1px solid rgb(226 232 240); font-size:.75rem; font-weight:500; color:rgb(51 65 85); }
+  .chip:hover { background:rgb(16 185 129 / .08); border-color:rgb(110 231 183); color:rgb(4 120 87); }
+  .dark .chip { background:rgb(15 23 42 / .6); border-color:rgb(51 65 85); color:rgb(203 213 225); }
+  .dark .chip:hover { background:rgb(6 78 59 / .5); border-color:rgb(52 211 153); color:rgb(110 231 183); }
+
+  /* Context chip — unselected looks like a ghost chip, selected fills with brand emerald */
+  .ctx-chip { display:inline-flex; align-items:center; gap:.25rem; padding:.3rem .625rem; border-radius:9999px; background:transparent; border:1px solid rgb(226 232 240); font-size:.75rem; font-weight:500; color:rgb(71 85 105); transition:all .12s; cursor:pointer; }
+  .ctx-chip:hover { border-color:rgb(148 163 184); color:rgb(15 23 42); }
+  .dark .ctx-chip { border-color:rgb(51 65 85); color:rgb(148 163 184); }
+  .dark .ctx-chip:hover { border-color:rgb(100 116 139); color:rgb(248 250 252); }
+  .ctx-chip.is-on { background:rgb(5 150 105); border-color:rgb(5 150 105); color:white; box-shadow:0 2px 8px rgba(5,150,105,.25); }
+  .ctx-chip.is-on:hover { background:rgb(4 120 87); border-color:rgb(4 120 87); color:white; }
+  .ctx-label { font-size:.6875rem; font-family:"JetBrains Mono",monospace; color:rgb(148 163 184); margin-right:.375rem; text-transform:uppercase; letter-spacing:.08em; }
+  .ctx-count { display:inline-flex; align-items:center; justify-content:center; min-width:1.5rem; padding:0 .3rem; border-radius:9999px; background:rgb(241 245 249); color:rgb(100 116 139); font-family:"JetBrains Mono",monospace; font-size:.625rem; font-weight:600; margin-left:.25rem; }
+  .dark .ctx-count { background:rgb(30 41 59); color:rgb(148 163 184); }
+  .ctx-chip.is-on .ctx-count { background:rgba(255,255,255,.22); color:white; }
+
+  /* Active-context pill on the result header */
+  .ctx-active { display:inline-flex; align-items:center; gap:.25rem; padding:.25rem .5rem .25rem .625rem; border-radius:9999px; background:rgb(209 250 229); color:rgb(4 120 87); font-size:.75rem; font-weight:500; border:1px solid rgb(110 231 183); }
+  .dark .ctx-active { background:rgb(6 95 70 / .5); color:rgb(167 243 208); border-color:rgb(5 150 105); }
+  .ctx-active button { color:inherit; opacity:.7; padding:2px; border-radius:9999px; }
+  .ctx-active button:hover { opacity:1; background:rgb(255 255 255 / .4); }
+  .dark .ctx-active button:hover { background:rgb(255 255 255 / .1); }
+
+  /* Pick chip — a random suggestion the user can click to search. */
+  .pick-chip { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .9rem; border-radius:9999px; background:white; border:1.5px dashed rgb(110 231 183); font-size:.875rem; font-weight:500; color:rgb(15 23 42); transition:all .12s; cursor:pointer; }
+  .pick-chip:hover { background:rgb(16 185 129); border-color:rgb(16 185 129); border-style:solid; color:white; transform:translateY(-1px); box-shadow:0 4px 12px rgba(16,185,129,.25); }
+  .pick-chip .pick-emoji { font-size:.9rem; }
+  .dark .pick-chip { background:rgb(15 23 42); color:rgb(248 250 252); border-color:rgb(5 150 105); }
+  .dark .pick-chip:hover { background:rgb(5 150 105); color:white; }
+  .pick-chip-dismiss { display:inline-flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; padding:0; border-radius:9999px; color:rgb(148 163 184); background:transparent; border:1px solid transparent; cursor:pointer; }
+  .pick-chip-dismiss:hover { color:rgb(15 23 42); background:rgb(241 245 249); }
+  .dark .pick-chip-dismiss:hover { color:rgb(248 250 252); background:rgb(30 41 59); }
+
+  /* Shuffle button inside pick row — solid ghost, distinct from dashed pick-chip */
+  .pick-shuffle { display:inline-flex; align-items:center; gap:.375rem; padding:.5rem .75rem; border-radius:9999px; background:rgb(241 245 249); border:1px solid rgb(226 232 240); font-size:.75rem; font-weight:500; color:rgb(71 85 105); transition:all .12s; cursor:pointer; }
+  .pick-shuffle:hover { background:rgb(15 23 42); border-color:rgb(15 23 42); color:white; }
+  .pick-shuffle:disabled { opacity:.6; cursor:not-allowed; }
+  .pick-shuffle:disabled:hover { background:rgb(241 245 249); border-color:rgb(226 232 240); color:rgb(71 85 105); }
+  .dark .pick-shuffle { background:rgb(30 41 59); border-color:rgb(51 65 85); color:rgb(203 213 225); }
+  .dark .pick-shuffle:hover { background:rgb(226 232 240); border-color:rgb(226 232 240); color:rgb(15 23 42); }
+  .dark .pick-shuffle:disabled:hover { background:rgb(30 41 59); border-color:rgb(51 65 85); color:rgb(203 213 225); }
+
+  /* Custom-context inline input */
+  .ctx-custom-input { padding:.3rem .625rem; border-radius:9999px; border:1px dashed rgb(110 231 183); background:white; font-size:.75rem; width:10rem; outline:none; }
+  .ctx-custom-input:focus { border-color:rgb(5 150 105); background:rgb(236 253 245); }
+  .dark .ctx-custom-input { background:rgb(15 23 42); border-color:rgb(5 150 105); color:rgb(248 250 252); }
+  .dark .ctx-custom-input:focus { background:rgb(6 78 59 / .4); }
+
+  .btn-primary { display:inline-flex; align-items:center; gap:.375rem; padding:.5rem .875rem; border-radius:.625rem; background:rgb(5 150 105); color:white; font-size:.8125rem; font-weight:600; }
+  .btn-primary:hover { background:rgb(4 120 87); }
+  .btn-primary:disabled { opacity:.55; cursor:not-allowed; }
+  .btn-ghost { display:inline-flex; align-items:center; justify-content:center; padding:.5rem; border-radius:.5rem; color:rgb(100 116 139); }
+  .btn-ghost:hover { background:rgb(241 245 249); color:rgb(15 23 42); }
+  .dark .btn-ghost { color:rgb(148 163 184); }
+  .dark .btn-ghost:hover { background:rgb(30 41 59); color:rgb(248 250 252); }
+
+  .icon-btn-sm { padding:.375rem; border-radius:.375rem; color:rgb(148 163 184); transition:color .15s, background-color .15s; }
+  .icon-btn-sm:hover { background:rgb(241 245 249); color:rgb(15 23 42); }
+  .dark .icon-btn-sm:hover { background:rgb(30 41 59); color:rgb(248 250 252); }
+  .icon-btn-sm.is-on { color:rgb(5 150 105); }
+  .dark .icon-btn-sm.is-on { color:rgb(52 211 153); }
+
+  .sentence-card { background:white; border:1px solid rgb(226 232 240); border-radius:.875rem; padding:1rem 1.125rem; display:flex; gap:.875rem; transition:border-color .15s, box-shadow .15s; }
+  .sentence-card:hover { border-color:rgb(110 231 183); box-shadow:0 4px 16px rgba(15,23,42,.06); }
+  .dark .sentence-card { background:rgb(15 23 42); border-color:rgb(30 41 59); }
+  .dark .sentence-card:hover { border-color:rgb(5 150 105); }
+
+  .hl { background: linear-gradient(180deg, transparent 58%, rgba(245,158,11,.4) 58%); color: inherit; padding:0 .125rem; border-radius:2px; font-weight:600; }
+  .dark .hl { background: linear-gradient(180deg, transparent 58%, rgba(251,191,36,.45) 58%); }
+
+  /* Chunk-type badge (v3) — primary signal at card's left edge */
+  .chunk-chip { display:inline-flex; align-items:center; gap:.25rem; padding:.125rem .5rem; min-width:2.25rem; height:1.75rem; border-radius:.375rem; font-size:.6875rem; font-weight:700; font-family:"JetBrains Mono",ui-monospace,monospace; letter-spacing:.05em; flex-shrink:0; margin-top:.125rem; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .04); white-space:nowrap; }
+  .chunk-chip::before { content:''; width:.3rem; height:.3rem; border-radius:9999px; background:currentColor; opacity:.8; }
+  .chunk-chip-sm { height:1.25rem; padding:0 .375rem; font-size:.625rem; min-width:1.75rem; }
+  .chunk-chip-sm::before { width:.25rem; height:.25rem; }
+  .cc-idiom   { background:rgb(237 233 254); color:rgb(109 40 217); }
+  .cc-dm      { background:rgb(254 243 199); color:rgb(180 83 9); }
+  .cc-pv      { background:rgb(255 228 230); color:rgb(190 18 60); }
+  .cc-coll    { background:rgb(207 250 254); color:rgb(14 116 144); }
+  .cc-bin     { background:rgb(250 232 255); color:rgb(162 28 175); }
+  .cc-stem    { background:rgb(241 245 249); color:rgb(51 65 85); }
+  .cc-word    { background:rgb(209 250 229); color:rgb(4 120 87); }
+  .cc-unknown { background:rgb(241 245 249); color:rgb(71 85 105); }
+  .dark .cc-idiom   { background:rgb(76 29 149 / .5); color:rgb(216 180 254); }
+  .dark .cc-dm      { background:rgb(120 53 15 / .5); color:rgb(252 211 77); }
+  .dark .cc-pv      { background:rgb(136 19 55 / .5); color:rgb(253 164 175); }
+  .dark .cc-coll    { background:rgb(22 78 99 / .5); color:rgb(103 232 249); }
+  .dark .cc-bin     { background:rgb(112 26 117 / .5); color:rgb(240 171 252); }
+  .dark .cc-stem    { background:rgb(30 41 59); color:rgb(203 213 225); }
+  .dark .cc-word    { background:rgb(6 95 70 / .5); color:rgb(110 231 183); }
+  .dark .cc-unknown { background:rgb(30 41 59); color:rgb(148 163 184); }
+
+  /* CEFR level — demoted to small pill in tag row */
+  .level-pill { display:inline-flex; align-items:center; padding:.125rem .375rem; border-radius:.25rem; font-size:.625rem; font-family:"JetBrains Mono",monospace; font-weight:600; letter-spacing:.02em; background:rgb(241 245 249); color:rgb(71 85 105); }
+  .dark .level-pill { background:rgb(30 41 59); color:rgb(148 163 184); }
+
+  /* Notification toggle switch */
+  .switch-wrapper { display:inline-block; }
+  .notif-switch { display:block; width:2.5rem; height:1.375rem; border-radius:9999px; background:rgb(203 213 225); position:relative; transition:background-color .15s; }
+  .notif-switch::after { content:''; position:absolute; top:2px; left:2px; width:1.125rem; height:1.125rem; border-radius:9999px; background:white; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:transform .2s; }
+  .dark .notif-switch { background:rgb(51 65 85); }
+  .switch-wrapper input:checked + .notif-switch { background:rgb(16 185 129); }
+  .switch-wrapper input:checked + .notif-switch::after { transform:translateX(1.125rem); }
+  .switch-wrapper input:disabled + .notif-switch { opacity:.5; cursor:not-allowed; }
+
+  /* Rating buttons (Review view) */
+  .rate-btn { flex:1; min-width:0; padding:.75rem .5rem; border-radius:.75rem; font-size:.875rem; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:.25rem; border:1px solid transparent; transition:transform .1s, box-shadow .15s; }
+  .rate-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(15,23,42,.08); }
+  .rate-btn .rate-label { font-size:.875rem; font-weight:600; }
+  .rate-btn .rate-shortcut { font-family:"JetBrains Mono",monospace; font-size:.625rem; opacity:.7; }
+  .rate-btn .rate-interval { font-family:"JetBrains Mono",monospace; font-size:.625rem; opacity:.85; }
+  .rate-again { background:rgb(254 226 226); color:rgb(153 27 27); } .dark .rate-again { background:rgb(127 29 29 / .4); color:rgb(254 202 202); }
+  .rate-hard  { background:rgb(255 237 213); color:rgb(154 52 18); } .dark .rate-hard  { background:rgb(124 45 18 / .4); color:rgb(253 186 116); }
+  .rate-good  { background:rgb(209 250 229); color:rgb(4 120 87); }  .dark .rate-good  { background:rgb(6 95 70 / .4); color:rgb(134 239 172); }
+  .rate-easy  { background:rgb(219 234 254); color:rgb(29 78 216); } .dark .rate-easy  { background:rgb(30 58 138 / .4); color:rgb(147 197 253); }
+
+  /* Streak card */
+  .streak-day { width:100%; aspect-ratio:1; border-radius:.25rem; background:rgb(241 245 249); }
+  .dark .streak-day { background:rgb(30 41 59); }
+  .streak-day.active { background:rgb(34 197 94); }
+  .streak-day.today  { outline:2px solid rgb(16 185 129); outline-offset:2px; }
+
+  /* SRS status pill */
+  .srs-pill { display:inline-flex; align-items:center; gap:.25rem; padding:.125rem .375rem; border-radius:.25rem; font-size:.625rem; font-family:"JetBrains Mono",monospace; font-weight:600; }
+  .srs-due       { background:rgb(254 226 226); color:rgb(153 27 27); }
+  .srs-learning  { background:rgb(254 243 199); color:rgb(146 64 14); }
+  .srs-later     { background:rgb(241 245 249); color:rgb(71 85 105); }
+  .srs-mastered  { background:rgb(209 250 229); color:rgb(4 120 87); }
+  .dark .srs-due      { background:rgb(127 29 29 / .4); color:rgb(254 202 202); }
+  .dark .srs-learning { background:rgb(120 53 15 / .4); color:rgb(252 211 77); }
+  .dark .srs-later    { background:rgb(30 41 59); color:rgb(148 163 184); }
+  .dark .srs-mastered { background:rgb(6 95 70 / .4); color:rgb(134 239 172); }
+
+  /* Review reveal overlay */
+  .reveal-tap { position:absolute; inset:0; display:grid; place-items:center; cursor:pointer; background:rgb(241 245 249 / .6); backdrop-filter:blur(2px); border-radius:.875rem; transition:opacity .15s; font-size:.875rem; color:rgb(71 85 105); }
+  .dark .reveal-tap { background:rgb(15 23 42 / .6); color:rgb(203 213 225); }
+
+  /* Chunk row — drill-down item in "Chunks containing X" section */
+  .chunk-row { display:flex; align-items:center; gap:.75rem; padding:.625rem .75rem; border-radius:.5rem; cursor:pointer; transition:background-color .15s; width:100%; text-align:left; background:transparent; border:none; }
+  .chunk-row:hover, .chunk-row:focus-visible { background:rgb(241 245 249); outline:none; }
+  .dark .chunk-row:hover, .dark .chunk-row:focus-visible { background:rgb(30 41 59); }
+  .chunk-row .arrow { opacity:0; transition:opacity .15s, transform .15s; }
+  .chunk-row:hover .arrow, .chunk-row:focus-visible .arrow { opacity:1; transform:translateX(2px); }
+
+  .tag { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:.25rem; background:rgb(241 245 249); color:rgb(71 85 105); font-size:.6875rem; font-family:"JetBrains Mono",monospace; }
+  .dark .tag { background:rgb(30 41 59); color:rgb(148 163 184); }
+
+  .theme-btn { color:rgb(100 116 139); border-radius:.375rem; }
+  .theme-btn.is-on { background:rgb(15 23 42); color:white; }
+  .dark .theme-btn.is-on { background:rgb(226 232 240); color:rgb(15 23 42); }
+
+  .toast { position:fixed; bottom:1rem; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:.5rem; padding:.625rem 1rem; border-radius:.625rem; background:rgb(15 23 42); color:white; font-size:.8125rem; box-shadow:0 10px 25px rgba(0,0,0,.15); z-index:60; animation:reveal .2s ease both; }
+  .dark .toast { background:rgb(226 232 240); color:rgb(15 23 42); }
+
+  /* Hide scrollbar for chip row */
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { scrollbar-width:none; }
+</style>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased">
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+  <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5 shrink-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 grid place-items-center text-white shadow-sm">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+      </div>
+      <div>
+        <div class="font-semibold tracking-tight text-[15px] leading-none">LinguaSpark</div>
+        <div class="hidden sm:block text-[10px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 mt-1 font-mono">Personal</div>
+      </div>
+    </div>
+
+    <nav class="flex items-center gap-0.5 text-sm" aria-label="Primary">
+      <button data-view="home" class="nav-btn px-2.5 py-1.5 rounded-md font-medium">Home</button>
+      <button data-view="saved" class="nav-btn px-2.5 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5">
+        Saved <span id="savedCount" class="text-[10px] px-1.5 py-0.5 rounded bg-brand-500 text-white font-mono">0</span>
+      </button>
+      <button data-view="review" class="nav-btn px-2.5 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5">
+        Review <span id="dueCount" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-red-500 text-white font-mono">0</span>
+      </button>
+    </nav>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <div class="hidden sm:flex items-center rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 text-xs" role="group" aria-label="Theme">
+        <button data-theme="light" class="theme-btn px-2 py-1 rounded-md" aria-label="Light">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+        <button data-theme="auto" class="theme-btn px-2 py-1 rounded-md" aria-label="Auto">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg>
+        </button>
+        <button data-theme="dark" class="theme-btn px-2 py-1 rounded-md" aria-label="Dark">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+      </div>
+      <button id="settingsBtn" class="btn-ghost" aria-label="Settings">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MAIN ============ -->
+<main class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pb-16">
+
+  <!-- HOME VIEW -->
+  <div id="homeView">
+    <!-- Hero + search -->
+    <section class="hero-grad -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+      <div class="max-w-2xl mx-auto text-center">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-5 font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+          <span id="statusPill">Groq · Llama 3.3 70B</span>
+        </div>
+        <h1 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
+          Type any word. <span class="text-brand-600 dark:text-brand-400 italic">Get real sentences.</span>
+        </h1>
+        <p class="mt-3 text-slate-600 dark:text-slate-400 text-sm sm:text-base">
+          Nhập một từ tiếng Anh bất kỳ — sinh câu ví dụ tự nhiên, kèm dịch và phát âm.
+        </p>
+
+        <form id="searchForm" class="mt-7 relative" onsubmit="return false">
+          <div class="flex items-center bg-white dark:bg-slate-900 rounded-2xl shadow-pop border border-slate-200 dark:border-slate-700 focus-within:border-brand-500 focus-within:shadow-glow transition">
+            <svg class="ml-4 sm:ml-5 w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="wordInput" type="text" placeholder="e.g. journey, resilient, break the ice…" autocomplete="off" autofocus
+              class="flex-1 bg-transparent px-3 sm:px-4 py-4 text-base sm:text-lg placeholder:text-slate-400 focus:outline-none" />
+            <button id="submitBtn" type="submit" class="m-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-55">
+              <span>Suggest</span>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </form>
+
+        <!-- Context selector -->
+        <div id="contextRow" class="mt-4 flex flex-wrap justify-center items-center gap-1.5 text-xs">
+          <!-- populated by JS -->
+        </div>
+
+        <!-- Random picks (3 suggestions) -->
+        <div id="pickRow" class="mt-3"><!-- populated by JS when picks exist --></div>
+
+        <!-- Recent searches -->
+        <div id="historyRow" class="mt-3 flex flex-wrap justify-center items-center gap-2 text-xs">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Result / empty / loading / error -->
+    <section id="resultSection" class="mt-8 sm:mt-10"></section>
+  </div>
+
+  <!-- SAVED VIEW -->
+  <div id="savedView" class="hidden mt-8 sm:mt-10">
+    <div class="flex items-center gap-3 mb-5">
+      <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Saved sentences</h2>
+      <span id="savedCountBig" class="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">0</span>
+      <button id="exportBtn" class="ml-auto text-xs text-brand-700 dark:text-brand-400 hover:underline">Export JSON</button>
+    </div>
+    <div id="savedList"></div>
+  </div>
+
+  <!-- REVIEW VIEW -->
+  <div id="reviewView" class="hidden mt-8 sm:mt-10"></div>
+</main>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 grid place-items-center bg-slate-900/50 dark:bg-slate-950/70 backdrop-blur-sm p-4">
+  <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-pop border border-slate-200 dark:border-slate-800 overflow-hidden reveal">
+    <div class="p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h2 class="font-display text-xl font-semibold">Settings</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Your API key is stored locally in this browser.</p>
+        </div>
+        <button id="closeSettings" class="btn-ghost" aria-label="Close">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <label class="block text-sm font-medium mb-1.5">Groq API key</label>
+      <div class="relative">
+        <input id="keyInput" type="password" placeholder="gsk_…"
+          class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-brand-500" />
+        <button id="toggleKeyVis" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 btn-ghost" aria-label="Show/hide">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+        Lấy API key miễn phí tại <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">console.groq.com/keys</a>. Free tier: 14,400 requests/day.
+      </p>
+
+      <label class="block text-sm font-medium mt-5 mb-1.5">Model</label>
+      <select id="modelSelect" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (balanced, recommended)</option>
+        <option value="llama-3.1-8b-instant">Llama 3.1 8B (fastest)</option>
+        <option value="openai/gpt-oss-120b">GPT-OSS 120B (highest quality)</option>
+      </select>
+
+      <!-- Reminder toggle -->
+      <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex-1">
+            <div class="text-sm font-medium">Nhắc tôi ôn hàng ngày</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">Browser notification khi có câu đến hạn. Chỉ fire được khi tab đang mở (giới hạn <code class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">file://</code>).</p>
+          </div>
+          <label class="switch-wrapper cursor-pointer shrink-0" aria-label="Toggle reminders">
+            <input id="notifToggle" type="checkbox" class="sr-only" />
+            <span class="notif-switch"></span>
+          </label>
+        </div>
+        <div id="notifOpts" class="hidden mt-3 flex items-end gap-3">
+          <div>
+            <label for="notifTime" class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">Giờ nhắc</label>
+            <input id="notifTime" type="time" value="20:00" class="w-32 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-brand-500" />
+          </div>
+          <button id="notifTestBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Test</button>
+        </div>
+        <p id="notifStatus" class="mt-2 text-[11px] font-mono text-slate-400 min-h-[1em]"></p>
+      </div>
+
+      <!-- Backup section -->
+      <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div class="text-sm font-medium">Backup</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">Xuất toàn bộ dữ liệu (saved, streak, SRS, settings) ra 1 file JSON. Import để chuyển máy hoặc khôi phục.</p>
+          </div>
+          <div class="flex flex-wrap gap-2 shrink-0">
+            <button id="exportDataBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 inline-flex items-center gap-1.5" title="Full backup — includes API key">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+              Export
+            </button>
+            <button id="exportSafeBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 inline-flex items-center gap-1.5" title="Safe backup — excludes API key, OK to share">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/><path d="M1 1l22 22" stroke-linecap="round" stroke-opacity=".5"/></svg>
+              Export (no key)
+            </button>
+            <button id="importDataBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 inline-flex items-center gap-1.5" title="Drop a backup file anywhere on the window too">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9M17 14l-5-5-5 5M5 3h14"/></svg>
+              Import
+            </button>
+            <input id="importFileInput" type="file" accept=".json,application/json" class="hidden" />
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 text-xs">
+          <button id="resetOrderBtn" class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:underline">Reset chip ordering</button>
+          <span class="text-slate-300 dark:text-slate-600">·</span>
+          <button id="clearDataBtn" class="text-red-600 dark:text-red-400 hover:underline">Clear all saved data</button>
+        </div>
+        <div class="flex gap-2">
+          <button id="cancelSettings" class="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium">Cancel</button>
+          <button id="saveSettings" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drag-and-drop overlay — shown while dragging a file over the window -->
+<div id="dropOverlay" class="hidden fixed inset-0 z-[70] pointer-events-none bg-brand-500/20 dark:bg-brand-500/25 backdrop-blur-sm grid place-items-center">
+  <div class="pointer-events-none px-8 py-6 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-dashed border-brand-500 shadow-pop flex flex-col items-center gap-3 max-w-md text-center">
+    <svg class="w-10 h-10 text-brand-600 dark:text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9M17 14l-5-5-5 5M5 3h14"/></svg>
+    <div class="font-display text-lg font-semibold">Drop backup to restore</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400">Dữ liệu hiện tại sẽ bị ghi đè sau khi xác nhận.</div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastHost"></div>
+
+<script>
+// =====================================================================
+// STATE & STORAGE
+// =====================================================================
+const LS = {
+  get: (k, fallback) => { try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+  del: (k) => localStorage.removeItem(k),
+};
+
+const state = {
+  key:          LS.get('groq_key', ''),
+  model:        LS.get('groq_model', 'llama-3.3-70b-versatile'),
+  saved:        LS.get('saved', []),
+  history:      LS.get('history', []),
+  activity:     LS.get('activity', {}),            // "YYYY-MM-DD" → true (streak tracking)
+  savedGroupBy: LS.get('savedGroupBy', 'type'),    // 'type' | 'flat' | 'status' | 'context'
+  notifEnabled: LS.get('notif_enabled', false),   // daily reminder toggle
+  notifTime:    LS.get('notif_time', '20:00'),     // HH:MM 24h
+  context:      LS.get('last_context', ''),        // '' | 'family' | 'work' | ... | 'custom:<text>'
+  randomLoading:false,                              // true while fetching random picks (UI spinner)
+  randomPicks:  [],                                 // array of 3 strings shown in the pick row
+  view:         'home',                             // 'home' | 'saved' | 'review'
+  word:         '',
+  result:       null,
+  loading:      false,
+  error:        null,
+  // Review session (transient, not persisted)
+  review: {
+    queue:     [],     // array of sentence ids to review this session
+    index:     0,
+    revealed:  false,
+    completed: 0,
+    correct:  0,       // Good + Easy count for session summary
+  },
+};
+
+// Context presets for biasing sentence generation
+const CONTEXTS = [
+  // Personal / everyday
+  { key: 'family',    emoji: '👨‍👩‍👧', label: 'Family',      hint: 'gia đình, cha mẹ, con cái, bữa cơm, nhà' },
+  { key: 'friends',   emoji: '🫂',        label: 'Friends',     hint: 'bạn bè, tụ tập, đi chơi' },
+  { key: 'daily',     emoji: '🏠',        label: 'Daily',       hint: 'sinh hoạt hằng ngày, nhà cửa, thói quen' },
+  // Professional
+  { key: 'work',      emoji: '💼',        label: 'Work',        hint: 'công việc, họp, đồng nghiệp, deadline' },
+  { key: 'interview', emoji: '🎤',        label: 'Interview',   hint: 'phỏng vấn việc làm, STAR, behavioral' },
+  { key: 'culture',   emoji: '🤝',        label: 'Culture fit', hint: 'văn hóa công ty, team values, workplace dynamics' },
+  { key: 'business',  emoji: '📊',        label: 'Business',    hint: 'deals, pitch, negotiation, ROI' },
+  { key: 'meeting',   emoji: '🗣️',        label: 'Meeting',     hint: 'họp hành, trình bày, thảo luận' },
+  // Learning & life domains
+  { key: 'school',    emoji: '🎓',        label: 'School',      hint: 'học sinh, lớp học, bài tập, thi cử' },
+  { key: 'travel',    emoji: '✈️',        label: 'Travel',      hint: 'du lịch, sân bay, khách sạn, khám phá' },
+  { key: 'health',    emoji: '🏥',        label: 'Health',      hint: 'sức khỏe, bác sĩ, triệu chứng, thể dục' },
+  { key: 'food',      emoji: '🍽️',        label: 'Food',        hint: 'ăn uống, nấu nướng, nhà hàng, ẩm thực' },
+  { key: 'tech',      emoji: '💻',        label: 'Tech',        hint: 'công nghệ, phần mềm, app, thiết bị' },
+  { key: 'emotion',   emoji: '💭',        label: 'Emotion',     hint: 'cảm xúc, tâm trạng, phản ứng' },
+];
+const CUSTOM_PREFIX = 'custom:';
+
+// Resolve state.context into a display object { key, emoji, label, phrase, custom }.
+// Returns null if no context is selected.
+function resolveContext(raw = state.context) {
+  if (!raw) return null;
+  if (raw.startsWith(CUSTOM_PREFIX)) {
+    const phrase = raw.slice(CUSTOM_PREFIX.length).trim();
+    if (!phrase) return null;
+    return { key: 'custom', emoji: '✎', label: phrase, phrase, custom: true };
+  }
+  const preset = CONTEXTS.find(c => c.key === raw);
+  if (!preset) return null;
+  return { ...preset, phrase: preset.label.toLowerCase(), custom: false };
+}
+
+// SRS tunables (SM-2 variant)
+const SRS = {
+  EASE_INIT:     2.5,
+  EASE_MIN:      1.3,
+  EASE_MAX:      3.0,
+  SESSION_CAP:   20,
+  MASTER_REPS:   8,
+  MASTER_DAYS:   180,
+  AGAIN_MIN:     10 / (60 * 24), // 10 minutes expressed in days, used for "in-session re-show"
+};
+
+// Back-fill SRS fields on older saved entries (one-shot migration at boot).
+function migrateSaved() {
+  let changed = false;
+  const now = Date.now();
+  state.saved.forEach(s => {
+    if (s.ease == null)            { s.ease = SRS.EASE_INIT; changed = true; }
+    if (s.interval_days == null)   { s.interval_days = 0;    changed = true; }
+    if (s.reps == null)            { s.reps = 0;             changed = true; }
+    if (s.next_due_at == null)     { s.next_due_at = now;    changed = true; }
+    if (s.last_reviewed_at == null){ s.last_reviewed_at = 0; changed = true; }
+    if (s.mastered == null)        { s.mastered = false;     changed = true; }
+    if (s.context === undefined)   { s.context = null;       changed = true; }
+  });
+  if (changed) LS.set('saved', state.saved);
+}
+migrateSaved();
+
+// =====================================================================
+// NOTIFICATIONS (daily reminder — in-tab only, works while app is open)
+// =====================================================================
+const NOTIF = {
+  DEFAULT_TIME: '20:00',
+  MIN_DUE:      1,
+  TITLE:        'LinguaSpark · Ôn tiếng Anh',
+  ICON:         '',
+};
+
+let notifTimerId = null;
+
+function canNotify() { return typeof window !== 'undefined' && 'Notification' in window; }
+
+// Next occurrence of HH:MM as absolute timestamp (today if still future, else tomorrow).
+function nextFireTime(hhmm, nowDate = new Date()) {
+  const [h, m] = String(hhmm || NOTIF.DEFAULT_TIME).split(':').map(n => parseInt(n, 10) || 0);
+  const fire = new Date(nowDate);
+  fire.setHours(h, m, 0, 0);
+  if (fire.getTime() <= nowDate.getTime()) fire.setDate(fire.getDate() + 1);
+  return fire.getTime();
+}
+
+function cancelNotif() {
+  if (notifTimerId != null) {
+    clearTimeout(notifTimerId);
+    notifTimerId = null;
+  }
+}
+
+function fireDueNotif() {
+  if (!canNotify() || Notification.permission !== 'granted') return;
+  const n = dueCards().length;
+  if (n < NOTIF.MIN_DUE) return;
+  try {
+    const streak = currentStreak();
+    const body = streak > 0
+      ? `${n} câu đang chờ ôn — giữ streak ${streak} ngày 🔥`
+      : `${n} câu đang chờ ôn. Ôn ngay để bắt đầu streak hôm nay.`;
+    const notif = new Notification(NOTIF.TITLE, { body, tag: 'lingua-due', renotify: true });
+    notif.onclick = () => {
+      window.focus();
+      state.view = 'review';
+      render();
+      notif.close();
+    };
+  } catch (e) {
+    console.warn('Notification failed:', e);
+  }
+}
+
+function scheduleNextNotif() {
+  cancelNotif();
+  if (!state.notifEnabled) return;
+  if (!canNotify() || Notification.permission !== 'granted') return;
+  const delay = Math.max(1000, nextFireTime(state.notifTime) - Date.now());
+  // setTimeout accepts up to ~24.8 days; our delay is always <24h so safe.
+  notifTimerId = setTimeout(() => {
+    fireDueNotif();
+    scheduleNextNotif();   // chain the next day
+  }, delay);
+}
+
+async function enableNotifications() {
+  if (!canNotify()) {
+    toast('Browser không hỗ trợ Notification');
+    return false;
+  }
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    try { perm = await Notification.requestPermission(); }
+    catch { perm = 'denied'; }
+  }
+  if (perm !== 'granted') {
+    toast('Permission bị từ chối');
+    state.notifEnabled = false;
+    LS.set('notif_enabled', false);
+    return false;
+  }
+  state.notifEnabled = true;
+  LS.set('notif_enabled', true);
+  scheduleNextNotif();
+  return true;
+}
+
+function disableNotifications() {
+  state.notifEnabled = false;
+  LS.set('notif_enabled', false);
+  cancelNotif();
+}
+
+// =====================================================================
+// GROQ CLIENT
+// =====================================================================
+const SYSTEM_PROMPT = `You are a friendly English vocabulary coach for Vietnamese learners (levels B1–C1).
+
+Your primary job is CHUNK DISCOVERY: when given a single word, surface the idioms, discourse markers, phrasal verbs, collocations, binomials, and sentence stems that contain that word — things the learner cannot discover on their own because they don't know those chunks exist.
+
+Given an English word or short phrase, return VALID JSON (no markdown, no commentary) with exactly this schema:
+
+{
+  "word": "<the input, lowercased and trimmed>",
+  "ipa": "<UK IPA inside forward slashes, e.g. /ˈdʒɜːr.ni/>",
+  "pos": "<comma-separated parts of speech, e.g. 'noun, verb'>",
+  "definitions": [
+    { "en": "<clear concise English definition>", "vn": "<natural Vietnamese translation>" }
+  ],
+  "related_chunks": [
+    {
+      "span": "<the full chunk as a string, lowercased unless it's a proper noun>",
+      "type": "<idiom|dm|pv|coll|bin|stem>",
+      "meaning_en": "<one-line English gloss>",
+      "meaning_vn": "<one-line Vietnamese gloss>"
+    }
+  ],
+  "sentences": [
+    {
+      "en": "<natural English sentence>",
+      "vn": "<natural Vietnamese translation>",
+      "level": "<A1|A2|B1|B2|C1|C2>",
+      "tag": "<short lowercase tag: travel, business, conversation, formal, academic, everyday, etc.>",
+      "chunk_type": "<word|idiom|dm|pv|coll|bin|stem|unknown>",
+      "chunk_span": "<exact substring of 'en' that IS the chunk, case-sensitive>"
+    }
+  ]
+}
+
+=== related_chunks (HIGH PRIORITY) ===
+- List 4 to 8 DISTINCT chunks that naturally CONTAIN the target word (or its inflections).
+- Order by usefulness for a B1–C1 learner (most common / most teachable first).
+- Each entry MUST include the target word as part of its "span".
+- Cover at least 2–3 different chunk types when possible (e.g. for "story" → 2 DMs + 2 idioms + 1 collocation).
+- DO NOT include pure WORD-type entries here — this section is exclusively for multi-word chunks.
+- If the input is already a multi-word chunk (e.g. user searches "long story short"), use related_chunks to list near-synonyms and variations (e.g. "in a nutshell", "to cut a long story short", "to sum up").
+- If the word genuinely has no common chunks (rare — e.g. a very technical term), return an empty array [] rather than inventing.
+
+=== sentences (CHUNK-FIRST distribution) ===
+- Generate 8 to 10 sentences total.
+- DISTRIBUTION: at most 2 sentences may be type "word" (plain single-word usage). The remaining 6–8 MUST be chunk types (idiom / dm / pv / coll / bin / stem).
+- Each chunk-type sentence SHOULD use one of the chunks from related_chunks when possible — this reinforces what the learner just saw.
+- Every chunk_span MUST contain the target word (or its inflection).
+- Include at least 1 sentence at A2, 2–3 at B1, 2–3 at B2, and 1–2 at C1+.
+- Sentences must sound natural — no textbook stiffness.
+- Vietnamese translations should be idiomatic, not word-for-word.
+- Include 1–3 definitions covering main senses.
+
+=== CONTEXT FOCUS (HIGHEST PRIORITY) ===
+If the user message includes a "Context:" line, EVERY sentence AND every related_chunk MUST be convincingly set in that context. Examples of what "set in context" means:
+
+Personal / everyday:
+- Context "family" → parents, children, grandparents, home life, meals together, siblings. NOT co-workers or airports.
+- Context "friends" → hanging out, group chats, getting together, weekend plans, banter.
+- Context "daily" → routines, home, neighborhood, everyday errands.
+
+Professional:
+- Context "work" → office, colleagues, deadlines, commute, project milestones.
+- Context "interview" → job interviews, behavioral questions, STAR answers, weaknesses/strengths, follow-up emails, salary discussions.
+- Context "culture fit" → team culture, company values, workplace dynamics, onboarding, inclusion, hybrid/remote norms.
+- Context "business" → deals, negotiations, pitches, ROI, clients, quarterly numbers, market positioning.
+- Context "meeting" → agendas, action items, standups, decks, Q&A, round-table, follow-ups.
+
+Learning & life domains:
+- Context "school" → students, classroom, homework, teacher, exam, group project.
+- Context "travel" → airports, hotels, luggage, booking, abroad, sightseeing.
+- Context "health" → doctor visits, symptoms, medication, nutrition, fitness routines, sleep.
+- Context "food" → cooking, recipes, restaurants, diet, grocery, eating habits.
+- Context "tech" → software, apps, bugs, devices, setup, debugging, updates.
+- Context "emotion" → feelings, mood shifts, reactions, stress, joy, regret, empathy.
+
+A custom context (e.g. "IELTS speaking", "startup pitch", "medical residency") → tune tone and vocabulary accordingly.
+
+Rules inside a context:
+- Vary sub-situations within the context (don't make all 8 sentences about "a family dinner" — vary across siblings, parents, grandparents, kids, home routines, etc.).
+- If the target word genuinely fights the context (e.g. "algorithm" + "family"), pick creative-but-plausible angles ("my dad asked me to explain the TikTok algorithm over dinner") rather than breaking context.
+- Vietnamese translations stay natural, not word-for-word.
+- Related_chunks are filtered to chunks that are ALSO plausible in the context (prefer "bedtime story" over "tall story" when context = family; prefer "walk me through your resume" over "walk the dog" when context = interview).
+
+=== chunk_type definitions (pick the ONE that best fits each sentence) ===
+- "idiom"   — figurative, non-compositional (e.g. "spill the beans", "hit the sack", "story of my life")
+- "dm"      — discourse marker that organizes discourse (e.g. "long story short", "by the way", "on the other hand", "in a nutshell")
+- "pv"      — phrasal verb: verb + particle(s) with shifted meaning (e.g. "look forward to", "put off", "give up")
+- "coll"    — collocation: literal but fixed pairing, non-interchangeable (e.g. "make a decision" not "do a decision", "heavy rain" not "strong rain", "tell a story")
+- "bin"     — binomial: two items joined by and/or in fixed order (e.g. "pros and cons", "back and forth", "ups and downs")
+- "stem"    — sentence stem with slots (e.g. "the story goes that...", "it occurred to me that...", "the fact of the matter is...")
+- "word"    — single lexeme with no chunk behavior (use sparingly per distribution rule above)
+- "unknown" — only if you are genuinely unsure
+
+=== chunk_span rules (inside sentences) ===
+- Must be an EXACT substring that appears in "en" (same capitalization, punctuation).
+- For type "word": chunk_span = the inflected form of the target word as it appears.
+- For multi-word types: chunk_span = the full chunk (e.g. "long story short", "make a decision", "look forward to").
+- If the sentence contains the chunk multiple times, use the first occurrence.
+
+=== Worked example for input "story" ===
+related_chunks should include entries like:
+  { span: "long story short", type: "dm", meaning_vn: "nói tóm lại", meaning_en: "to summarize briefly" }
+  { span: "the story goes that", type: "stem", meaning_vn: "người ta kể rằng", meaning_en: "people say that" }
+  { span: "a whole different story", type: "idiom", meaning_vn: "chuyện hoàn toàn khác", meaning_en: "a very different situation" }
+  { span: "story of my life", type: "idiom", meaning_vn: "cuộc đời tôi nó thế", meaning_en: "something that keeps happening to me" }
+  { span: "tell a story", type: "coll", meaning_vn: "kể chuyện", meaning_en: "narrate an account" }
+Each sentence should then USE one of these chunks (chunk_span matching the related_chunks span).`;
+
+async function generateSentences(word, context = '') {
+  if (!state.key) throw new Error('NO_KEY');
+
+  const ctx = resolveContext(context);
+  const userMsg = ctx
+    ? `Word: ${word}\nContext: ${ctx.phrase}`
+    : `Word: ${word}`;
+
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${state.key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: state.model,
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: userMsg },
+      ],
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    if (resp.status === 401) throw new Error('INVALID_KEY');
+    if (resp.status === 429) throw new Error('RATE_LIMIT');
+    throw new Error(`HTTP ${resp.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error('Empty response from model');
+
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error('Model returned invalid JSON'); }
+
+  if (!Array.isArray(parsed.sentences) || parsed.sentences.length === 0) {
+    throw new Error('Model returned no sentences');
+  }
+  return parsed;
+}
+
+// Lightweight prompt — asks for THREE diverse picks so the user can choose.
+const RANDOM_WORD_PROMPT = `You suggest random useful English vocabulary for a Vietnamese B1–C1 learner.
+
+Return ONLY valid JSON: { "words": ["<pick 1>", "<pick 2>", "<pick 3>"] }
+
+Rules:
+- Return EXACTLY 3 picks — diverse in type (e.g., one single word, one idiom or phrasal verb, one collocation or chunk).
+- Each pick is a word or short chunk — no sentences, no explanations.
+- All 3 should be natural and learnable, not obscure or overly academic.
+- Prefer items rich in chunks/collocations. Avoid bare function words like "and", "the".
+- If a context is provided, ALL 3 picks MUST be plausible in that context (e.g. "family" → ["bedtime story", "sibling rivalry", "bring up"]; "work" → ["touch base", "deadline", "circle back"]).
+- If a list of recent words is provided, DO NOT include any of them among the picks.
+- Avoid within-batch redundancy: the 3 picks should feel distinct, not near-duplicates (e.g. don't pick "bedtime story" AND "tell a story" in the same batch).`;
+
+function recentRandomKey() {
+  return state.context ? `recent_random_${state.context}` : 'recent_random_none';
+}
+
+// Per-preset-context usage counter — drives the "most used first" chip ordering.
+// Custom contexts are not tracked individually (they all share the Custom slot in the UI).
+// Counts decay weekly so abandoned contexts slowly fall back down the row.
+const USAGE_DECAY = {
+  INTERVAL_MS: 7 * 86400e3,   // one week
+  FACTOR:      0.75,           // multiply counts each elapsed week
+  LS_KEY:      'context_usage_decay_at',
+};
+
+function applyContextUsageDecay() {
+  const now = Date.now();
+  let last = LS.get(USAGE_DECAY.LS_KEY, 0);
+  // First run — anchor the decay clock so existing counts aren't instantly shrunk.
+  if (!last) { LS.set(USAGE_DECAY.LS_KEY, now); return; }
+  const elapsed = now - last;
+  if (elapsed < USAGE_DECAY.INTERVAL_MS) return;
+
+  const weeks = Math.floor(elapsed / USAGE_DECAY.INTERVAL_MS);
+  const multiplier = Math.pow(USAGE_DECAY.FACTOR, weeks);
+  const usage = LS.get('context_usage', {});
+  Object.keys(usage).forEach(k => {
+    const decayed = Math.floor(usage[k] * multiplier);
+    if (decayed <= 0) delete usage[k];
+    else usage[k] = decayed;
+  });
+  LS.set('context_usage', usage);
+  // Advance the clock by completed weeks only — partial-week remainder accrues toward next decay.
+  LS.set(USAGE_DECAY.LS_KEY, last + weeks * USAGE_DECAY.INTERVAL_MS);
+}
+
+function getContextUsage() {
+  applyContextUsageDecay();
+  return LS.get('context_usage', {});
+}
+function bumpContextUsage(key) {
+  if (!key || key.startsWith(CUSTOM_PREFIX)) return;
+  applyContextUsageDecay();
+  const usage = LS.get('context_usage', {});
+  usage[key] = (usage[key] || 0) + 1;
+  LS.set('context_usage', usage);
+}
+
+async function randomizeWord() {
+  if (state.randomLoading) return;
+  if (!state.key) { state.error = 'NO_KEY'; render(); return; }
+
+  state.randomLoading = true;
+  renderContextRow();  // show loading state on the Random chip
+  renderPickRow();
+
+  const ctx = resolveContext();
+  const recents = LS.get(recentRandomKey(), []);
+  const userMsg = [
+    ctx ? `Context: ${ctx.phrase}` : 'Context: (any common useful word)',
+    recents.length ? `Avoid: ${recents.slice(0, 20).join(', ')}` : null,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${state.key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: state.model,
+        response_format: { type: 'json_object' },
+        temperature: 1.2,    // high for variety
+        messages: [
+          { role: 'system', content: RANDOM_WORD_PROMPT },
+          { role: 'user',   content: userMsg },
+        ],
+      }),
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      if (resp.status === 401) throw new Error('Invalid API key');
+      if (resp.status === 429) throw new Error('Rate limit hit — thử lại sau');
+      throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 120)}`);
+    }
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content;
+    let parsed;
+    try { parsed = JSON.parse(raw || '{}'); }
+    catch { throw new Error('Model returned invalid JSON'); }
+
+    // Accept both new `words: [...]` and legacy `word: "..."` for resilience.
+    let picks = [];
+    if (Array.isArray(parsed.words)) picks = parsed.words;
+    else if (parsed.word) picks = [parsed.word];
+    picks = picks
+      .map(w => String(w || '').trim().toLowerCase())
+      .filter(Boolean)
+      .filter((w, i, arr) => arr.indexOf(w) === i)   // dedupe within batch
+      .slice(0, 3);
+    if (!picks.length) throw new Error('No words returned');
+
+    // Track all picks as "recent" so subsequent calls avoid them.
+    const updated = [...picks, ...recents.filter(w => !picks.includes(w))].slice(0, 20);
+    LS.set(recentRandomKey(), updated);
+
+    state.randomPicks = picks;
+    state.randomLoading = false;
+    renderContextRow();
+    renderPickRow();
+  } catch (err) {
+    state.randomLoading = false;
+    toast('Random failed: ' + (err.message || err));
+    renderContextRow();
+    renderPickRow();
+  }
+}
+
+// User clicked one of the 3 pick chips.
+function pickRandom(word) {
+  const w = String(word || '').trim();
+  if (!w) return;
+  const input = document.getElementById('wordInput');
+  if (input) input.value = w;
+  runSearch(w);
+  // Keep state.randomPicks visible so user can try the other picks too.
+}
+
+function dismissRandomPicks() {
+  state.randomPicks = [];
+  renderPickRow();
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+const CHUNK_TYPES = {
+  word:    { code: 'WORD',  label: 'Từ đơn' },
+  idiom:   { code: 'IDIOM', label: 'Idiom' },
+  dm:      { code: 'DM',    label: 'Discourse marker' },
+  pv:      { code: 'PV',    label: 'Phrasal verb' },
+  coll:    { code: 'COLL',  label: 'Collocation' },
+  bin:     { code: 'BIN',   label: 'Binomial' },
+  stem:    { code: 'STEM',  label: 'Sentence stem' },
+  unknown: { code: '?',     label: 'Chưa phân loại' },
+};
+
+const CHUNK_ORDER = ['idiom','dm','pv','coll','bin','stem','word','unknown'];
+
+function normalizeChunkType(t) {
+  const k = String(t || '').toLowerCase().trim();
+  return CHUNK_TYPES[k] ? k : 'word';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Highlight the chunk span (preferred) or the raw word as a fallback.
+// The chunk_span is the exact substring the model tagged as the chunk — enables
+// multi-word highlighting like <mark>long story short</mark> instead of just "long".
+function highlight(sentence, word, chunkSpan) {
+  const safe = escapeHtml(sentence);
+  const span = (chunkSpan || '').trim();
+  if (span) {
+    const safeSpan = escapeHtml(span);
+    if (safe.includes(safeSpan)) {
+      return safe.split(safeSpan).join(`<mark class="hl">${safeSpan}</mark>`);
+    }
+  }
+  if (!word) return safe;
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim();
+  if (!esc) return safe;
+  const re = new RegExp(`\\b(${esc}[a-z]{0,4})\\b`, 'gi');
+  return safe.replace(re, '<mark class="hl">$1</mark>');
+}
+
+function sentenceId(word, en) {
+  return `${word.toLowerCase().trim()}::${en.slice(0, 80)}`;
+}
+
+function speak(text, rate = 0.95) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = rate;
+  u.pitch = 1;
+  window.speechSynthesis.speak(u);
+}
+
+function toast(msg, timeout = 1800) {
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), timeout);
+}
+
+function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast('Copied'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Copied'); } finally { ta.remove(); }
+  }
+}
+
+// =====================================================================
+// STREAK (daily activity tracking)
+// =====================================================================
+function todayKey(d = new Date()) {
+  // Local-time YYYY-MM-DD so the day boundary matches user's wall clock.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dayKeyOffset(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return todayKey(d);
+}
+
+function markActive() {
+  const k = todayKey();
+  if (!state.activity[k]) {
+    state.activity[k] = true;
+    LS.set('activity', state.activity);
+  }
+}
+
+function currentStreak() {
+  // Walk backwards from today; stop on first gap.
+  // If today not yet active but yesterday was, streak includes yesterday (grace within same day).
+  let count = 0;
+  let offset = 0;
+  if (!state.activity[todayKey()]) {
+    // Allow the count to START from yesterday so streak doesn't visibly "break" during the day before use.
+    if (state.activity[dayKeyOffset(-1)]) offset = -1;
+    else return 0;
+  }
+  while (state.activity[dayKeyOffset(offset)]) {
+    count++;
+    offset--;
+  }
+  return count;
+}
+
+function longestStreak() {
+  const keys = Object.keys(state.activity).sort();
+  if (!keys.length) return 0;
+  let longest = 1, run = 1;
+  for (let i = 1; i < keys.length; i++) {
+    const prev = new Date(keys[i - 1] + 'T00:00');
+    const curr = new Date(keys[i] + 'T00:00');
+    const diff = Math.round((curr - prev) / 86400000);
+    if (diff === 1) { run++; longest = Math.max(longest, run); }
+    else run = 1;
+  }
+  return longest;
+}
+
+function daysActiveLast30() {
+  let count = 0;
+  for (let i = 0; i < 30; i++) if (state.activity[dayKeyOffset(-i)]) count++;
+  return count;
+}
+
+// =====================================================================
+// SRS ENGINE (SM-2 variant)
+// =====================================================================
+// Update a saved card's scheduling fields based on a user rating. Mutates in place
+// and returns the card. Call LS.set('saved', state.saved) after for persistence.
+function scheduleReview(card, rating) {
+  const now = Date.now();
+  let ease = card.ease ?? SRS.EASE_INIT;
+  let interval = card.interval_days ?? 0;
+  let reps = card.reps ?? 0;
+
+  switch (rating) {
+    case 'again':
+      ease = Math.max(SRS.EASE_MIN, ease - 0.2);
+      interval = SRS.AGAIN_MIN;
+      reps = 0;
+      break;
+    case 'hard':
+      ease = Math.max(SRS.EASE_MIN, ease - 0.15);
+      interval = reps === 0 ? 1 : Math.max(1, interval * 1.2);
+      reps += 1;
+      break;
+    case 'good':
+      if (reps === 0) interval = 1;
+      else if (reps === 1) interval = 3;
+      else interval = interval * ease;
+      reps += 1;
+      break;
+    case 'easy':
+      ease = Math.min(SRS.EASE_MAX, ease + 0.15);
+      if (reps === 0) interval = 2;
+      else interval = interval * ease * 1.3;
+      reps += 1;
+      break;
+  }
+
+  card.ease = Math.max(SRS.EASE_MIN, Math.min(SRS.EASE_MAX, ease));
+  card.interval_days = interval;
+  card.reps = reps;
+  card.last_reviewed_at = now;
+  card.next_due_at = now + interval * 86400e3;
+  if (reps >= SRS.MASTER_REPS && interval >= SRS.MASTER_DAYS) {
+    card.mastered = true;
+  }
+  return card;
+}
+
+// Projected next-interval text shown under each rating button.
+function projectInterval(card, rating) {
+  const clone = JSON.parse(JSON.stringify(card));
+  scheduleReview(clone, rating);
+  return formatInterval(clone.interval_days);
+}
+
+function formatInterval(days) {
+  if (days < 1/24) return `${Math.round(days * 24 * 60)}m`;
+  if (days < 1)    return `${Math.round(days * 24)}h`;
+  if (days < 30)   return `${Math.round(days)}d`;
+  if (days < 365)  return `${Math.round(days / 30)}mo`;
+  return `${(days / 365).toFixed(1)}y`;
+}
+
+function dueCards(now = Date.now()) {
+  return state.saved
+    .filter(s => !s.mastered && (s.next_due_at ?? 0) <= now)
+    .sort((a, b) => (a.next_due_at ?? 0) - (b.next_due_at ?? 0));
+}
+
+function nextDueAt() {
+  const upcoming = state.saved
+    .filter(s => !s.mastered && (s.next_due_at ?? 0) > Date.now())
+    .map(s => s.next_due_at)
+    .sort((a, b) => a - b);
+  return upcoming[0] || null;
+}
+
+function masteredCount()  { return state.saved.filter(s => s.mastered).length; }
+function learningCount()  { return state.saved.filter(s => !s.mastered && s.reps > 0).length; }
+
+function srsStatusOf(s) {
+  if (s.mastered) return 'mastered';
+  if ((s.next_due_at ?? 0) <= Date.now()) return 'due';
+  if (s.reps > 0) return 'learning';
+  return 'later';
+}
+
+// Review session lifecycle
+function startReview() {
+  const due = dueCards();
+  state.review = {
+    queue:     due.slice(0, SRS.SESSION_CAP).map(s => s.id),
+    index:     0,
+    revealed:  false,
+    completed: 0,
+    correct:   0,
+  };
+}
+
+function currentReviewCard() {
+  const id = state.review.queue[state.review.index];
+  return id ? state.saved.find(s => s.id === id) : null;
+}
+
+function advanceReview(rating) {
+  const card = currentReviewCard();
+  if (!card) return;
+  scheduleReview(card, rating);
+  LS.set('saved', state.saved);
+  state.review.completed++;
+  if (rating === 'good' || rating === 'easy') state.review.correct++;
+
+  // "Again" → push this card's id to end of queue so the user sees it again this session.
+  if (rating === 'again') {
+    state.review.queue.push(card.id);
+  }
+  state.review.index++;
+  state.review.revealed = false;
+  markActive();
+}
+
+function formatRelativeFromNow(ms) {
+  const diff = ms - Date.now();
+  const abs = Math.abs(diff);
+  const days = abs / 86400e3;
+  const sign = diff < 0 ? 'ago' : 'in';
+  const s = formatInterval(days);
+  return sign === 'ago' ? `${s} ago` : `in ${s}`;
+}
+
+// =====================================================================
+// PERSISTENCE HELPERS
+// =====================================================================
+function saveSentence(word, s) {
+  const id = sentenceId(word, s.en);
+  if (state.saved.find(x => x.id === id)) return false;
+  const now = Date.now();
+  state.saved.unshift({
+    id, word, ...s, savedAt: now,
+    // Context at time of save — helps learner recall the bucket they first met the sentence in.
+    context: state.context || null,
+    // SRS defaults — due immediately so first review happens today.
+    ease:             SRS.EASE_INIT,
+    interval_days:    0,
+    reps:             0,
+    next_due_at:      now,
+    last_reviewed_at: 0,
+    mastered:         false,
+  });
+  LS.set('saved', state.saved);
+  updateSavedBadge();
+  return true;
+}
+
+function unsaveSentence(id) {
+  state.saved = state.saved.filter(x => x.id !== id);
+  LS.set('saved', state.saved);
+  updateSavedBadge();
+}
+
+function isSaved(word, en) {
+  return !!state.saved.find(x => x.id === sentenceId(word, en));
+}
+
+function addHistory(word) {
+  const w = word.trim().toLowerCase();
+  if (!w) return;
+  state.history = [w, ...state.history.filter(x => x !== w)].slice(0, 8);
+  LS.set('history', state.history);
+}
+
+function updateSavedBadge() {
+  document.getElementById('savedCount').textContent = state.saved.length;
+  const big = document.getElementById('savedCountBig');
+  if (big) big.textContent = state.saved.length;
+
+  // Due-count pill on Review nav
+  const duePill = document.getElementById('dueCount');
+  if (duePill) {
+    const n = dueCards().length;
+    duePill.textContent = n;
+    duePill.classList.toggle('hidden', n === 0);
+    duePill.classList.toggle('bg-red-500',   n >= 10);
+    duePill.classList.toggle('bg-amber-500', n > 0 && n < 10);
+  }
+}
+
+// =====================================================================
+// RENDER
+// =====================================================================
+function render() {
+  document.getElementById('homeView').classList.toggle('hidden',   state.view !== 'home');
+  document.getElementById('savedView').classList.toggle('hidden',  state.view !== 'saved');
+  document.getElementById('reviewView').classList.toggle('hidden', state.view !== 'review');
+
+  document.querySelectorAll('[data-view]').forEach(b => {
+    const on = b.dataset.view === state.view;
+    b.classList.toggle('bg-slate-100', on);
+    b.classList.toggle('dark:bg-slate-800', on);
+    b.classList.toggle('text-slate-600', !on);
+    b.classList.toggle('dark:text-slate-300', !on);
+  });
+
+  updateSavedBadge();
+
+  if (state.view === 'home')        renderHome();
+  else if (state.view === 'saved')  renderSaved();
+  else if (state.view === 'review') renderReview();
+}
+
+function renderHome() {
+  renderContextRow();
+  renderPickRow();
+  renderHistory();
+  const box = document.getElementById('resultSection');
+
+  // Banners + streak live at top of the result section so they're visible regardless of state.
+  const banners = renderDueBanner() + renderStreakCard();
+
+  if (state.loading) {
+    box.innerHTML = banners + renderLoading();
+    wireBanners(box);
+    return;
+  }
+  if (state.error) {
+    box.innerHTML = banners + renderError(state.error);
+    wireBanners(box);
+    document.getElementById('retryBtn')?.addEventListener('click', () => runSearch(state.word));
+    document.getElementById('openSettingsFromError')?.addEventListener('click', openSettings);
+    return;
+  }
+  if (state.result) {
+    box.innerHTML = banners + renderResult(state.result);
+    wireBanners(box);
+    wireSentenceActions(box);
+    return;
+  }
+  box.innerHTML = banners + renderEmpty();
+  wireBanners(box);
+  box.querySelectorAll('[data-try]').forEach(el => el.addEventListener('click', () => {
+    document.getElementById('wordInput').value = el.dataset.try;
+    runSearch(el.dataset.try);
+  }));
+}
+
+function wireBanners(root) {
+  root.querySelector('[data-goto-review]')?.addEventListener('click', () => {
+    state.view = 'review';
+    render();
+  });
+}
+
+function renderDueBanner() {
+  const due = dueCards();
+  if (!due.length) return '';
+  const streak = currentStreak();
+  const streakTxt = streak > 0
+    ? `Giữ streak ${streak} ngày — còn <b>${due.length}</b> câu đang chờ ôn.`
+    : `Có <b>${due.length}</b> câu đang chờ ôn — ôn ngay để bắt đầu streak hôm nay.`;
+  return `
+    <div class="reveal mb-5 flex flex-wrap items-center gap-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-pop">
+      <div class="w-10 h-10 shrink-0 rounded-xl bg-white/20 grid place-items-center" aria-hidden="true">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z"/></svg>
+      </div>
+      <div class="flex-1 min-w-[180px]">
+        <div class="text-sm leading-snug">${streakTxt}</div>
+      </div>
+      <button data-goto-review class="px-4 py-2 rounded-lg bg-white text-brand-700 text-sm font-semibold hover:bg-brand-50 shrink-0">
+        Review now →
+      </button>
+    </div>`;
+}
+
+function renderStreakCard() {
+  const cur = currentStreak();
+  const longest = longestStreak();
+  const active30 = daysActiveLast30();
+  // 7-day heatmap row (Mon..Sun of current week, fallback: last 7 calendar days).
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const k = dayKeyOffset(-i);
+    days.push({ key: k, active: !!state.activity[k], today: i === 0 });
+  }
+  return `
+    <div class="reveal mb-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-card">
+      <div class="flex items-center gap-4">
+        <div class="shrink-0">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-slate-500 dark:text-slate-400">Streak</div>
+          <div class="flex items-baseline gap-1.5 mt-0.5">
+            <span class="text-3xl font-display font-semibold">${cur}</span>
+            <span class="text-sm text-slate-500 dark:text-slate-400">ngày 🔥</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="grid grid-cols-7 gap-1 sm:gap-1.5" aria-label="Last 7 days">
+            ${days.map(d => `<div class="streak-day ${d.active ? 'active' : ''} ${d.today ? 'today' : ''}" title="${d.key}${d.active ? ' · active' : ''}"></div>`).join('')}
+          </div>
+          <div class="mt-1.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex justify-between">
+            <span>Dài nhất: ${longest}d</span>
+            <span>30 ngày gần đây: ${active30}d</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderContextRow() {
+  const row = document.getElementById('contextRow');
+  if (!row) return;
+  const active = resolveContext();
+  const activeKey = active ? (active.custom ? 'custom' : active.key) : '';
+  const customText = (state.context || '').startsWith(CUSTOM_PREFIX)
+    ? state.context.slice(CUSTOM_PREFIX.length)
+    : '';
+
+  // Sort presets by usage count (desc). Array.sort is stable in modern engines,
+  // so tied contexts retain their original theme order from the CONTEXTS array.
+  // INVARIANT: the Custom chip is always rendered AFTER the preset group, never
+  // sorted alongside presets. The filter below is defensive — if someone ever adds
+  // a `{ key: 'custom', ... }` entry to CONTEXTS, it will still be ignored here
+  // and only appear via the dedicated `customChip` slot below.
+  const usage = getContextUsage();
+  const sortedCtx = [...CONTEXTS]
+    .filter(c => c.key !== 'custom')
+    .sort((a, b) => (usage[b.key] || 0) - (usage[a.key] || 0));
+  const presets = sortedCtx.map(c => {
+    const n = usage[c.key] || 0;
+    const tooltip = n > 0 ? `${c.hint} · dùng ${n}×` : c.hint;
+    const countBadge = n > 0 ? `<span class="ctx-count">${n}×</span>` : '';
+    return `
+    <button type="button" class="ctx-chip ${activeKey === c.key ? 'is-on' : ''}" data-ctx="${c.key}" title="${escapeHtml(tooltip)}">
+      <span aria-hidden="true">${c.emoji}</span>
+      <span>${c.label}</span>
+      ${countBadge}
+    </button>`;
+  }).join('');
+
+  // Custom: chip if inactive; input if active OR if user is typing
+  const customChip = activeKey === 'custom'
+    ? `<input id="ctxCustomInput" class="ctx-custom-input" type="text" placeholder="Custom context…" value="${escapeHtml(customText)}" />
+       <button type="button" class="ctx-chip is-on" data-ctx-clear-custom title="Clear">✕</button>`
+    : `<button type="button" class="ctx-chip" data-ctx="custom" title="Free-text context (e.g. IELTS speaking)">
+         <span aria-hidden="true">✎</span>
+         <span>Custom</span>
+       </button>`;
+
+  // Random chip — picks a word in current context (or any if no context), fills input, auto-searches.
+  const randomLabel = active
+    ? `Random in ${escapeHtml(active.label)}`
+    : 'Random word';
+  const randomChip = state.randomLoading
+    ? `<button type="button" class="ctx-chip" disabled title="Đang chọn từ…">
+         <span class="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden="true"></span>
+         <span>Generating…</span>
+       </button>`
+    : `<button type="button" class="ctx-chip" data-ctx-random title="Let the app pick a random word (shortcut: R)">
+         <span aria-hidden="true">🎲</span>
+         <span>${randomLabel}</span>
+       </button>`;
+
+  // Layout: Context: [preset1] [preset2] … [presetN]  |  [Custom]  |  [🎲 Random]
+  //         ——————— sorted by usage ———————— pinned ——— pinned ———
+  const presetDivider = '<span class="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></span>';
+  row.innerHTML = `<span class="ctx-label">Context:</span>${presets}${presetDivider}${customChip}${presetDivider}${randomChip}`;
+
+  // Wire preset chips
+  row.querySelectorAll('[data-ctx]').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.ctx;
+    if (key === 'custom') {
+      // Preserve any previously typed custom text
+      state.context = customText ? `${CUSTOM_PREFIX}${customText}` : `${CUSTOM_PREFIX}`;
+    } else if (activeKey === key) {
+      state.context = '';            // clicking current deselects
+    } else {
+      state.context = key;
+    }
+    LS.set('last_context', state.context);
+    renderContextRow();
+    // Focus custom input after rendering if user just entered custom mode
+    if (state.context.startsWith(CUSTOM_PREFIX)) {
+      document.getElementById('ctxCustomInput')?.focus();
+    }
+  }));
+
+  // Wire custom-clear
+  row.querySelector('[data-ctx-clear-custom]')?.addEventListener('click', () => {
+    state.context = '';
+    LS.set('last_context', '');
+    renderContextRow();
+  });
+
+  // Wire random
+  row.querySelector('[data-ctx-random]')?.addEventListener('click', () => randomizeWord());
+
+  // Wire custom input — update state on blur / Enter
+  const input = document.getElementById('ctxCustomInput');
+  if (input) {
+    const commit = () => {
+      const val = input.value.trim();
+      state.context = val ? `${CUSTOM_PREFIX}${val}` : '';
+      LS.set('last_context', state.context);
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); document.getElementById('wordInput')?.focus(); }
+      if (e.key === 'Escape') { state.context = ''; LS.set('last_context', ''); renderContextRow(); }
+    });
+    input.addEventListener('blur', commit);
+  }
+}
+
+function renderPickRow() {
+  const row = document.getElementById('pickRow');
+  if (!row) return;
+  const picks = state.randomPicks || [];
+  if (!picks.length) { row.innerHTML = ''; return; }
+
+  const active = resolveContext();
+  const label = active ? `Random in ${escapeHtml(active.label)}` : 'Random picks';
+
+  const shuffleBtn = state.randomLoading
+    ? `<button type="button" class="pick-shuffle" disabled title="Đang chọn từ…">
+         <span class="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" aria-hidden="true"></span>
+         <span>Shuffling…</span>
+       </button>`
+    : `<button type="button" class="pick-shuffle" data-pick-shuffle title="Sinh 3 gợi ý mới (R)">
+         <span aria-hidden="true">🎲</span>
+         <span>Shuffle 3 mới</span>
+       </button>`;
+
+  row.innerHTML = `
+    <div class="flex flex-col items-center gap-2 reveal">
+      <div class="text-[10px] font-mono uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        🎲 ${label} — chọn 1 để xem ví dụ
+      </div>
+      <div class="flex flex-wrap justify-center items-center gap-2">
+        ${picks.map(w => `
+          <button type="button" class="pick-chip" data-pick="${escapeHtml(w)}" title="Search for '${escapeHtml(w)}'">
+            <span>${escapeHtml(w)}</span>
+            <svg class="w-3 h-3 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>`).join('')}
+        <span class="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5"></span>
+        ${shuffleBtn}
+        <button type="button" class="pick-chip-dismiss" data-pick-dismiss aria-label="Dismiss picks" title="Dismiss">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>`;
+
+  row.querySelectorAll('[data-pick]').forEach(btn => btn.addEventListener('click', () => {
+    pickRandom(btn.dataset.pick);
+  }));
+  row.querySelector('[data-pick-shuffle]')?.addEventListener('click', () => randomizeWord());
+  row.querySelector('[data-pick-dismiss]')?.addEventListener('click', dismissRandomPicks);
+}
+
+function renderHistory() {
+  const row = document.getElementById('historyRow');
+  if (!state.history.length) {
+    row.innerHTML = `<span class="text-slate-500 dark:text-slate-400">Try:</span>
+      <button class="chip" data-try="journey">journey</button>
+      <button class="chip" data-try="resilient">resilient</button>
+      <button class="chip" data-try="break the ice">break the ice</button>
+      <button class="chip" data-try="commit">commit</button>`;
+  } else {
+    row.innerHTML = `<span class="text-slate-500 dark:text-slate-400">Recent:</span>` +
+      state.history.map(w => `<button class="chip" data-try="${escapeHtml(w)}">${escapeHtml(w)}</button>`).join('');
+  }
+  row.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => {
+    document.getElementById('wordInput').value = b.dataset.try;
+    runSearch(b.dataset.try);
+  }));
+}
+
+function renderLoading() {
+  return `
+    <div class="max-w-3xl">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 reveal">
+        <div class="flex items-center gap-3"><div class="skeleton h-9 w-40"></div><div class="skeleton h-5 w-12"></div></div>
+        <div class="skeleton h-4 w-32"></div>
+        <div class="skeleton h-4 w-full"></div>
+        <div class="skeleton h-4 w-4/5"></div>
+      </div>
+      <div class="mt-4 space-y-2.5">
+        ${[0,1,2].map(() => `
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex gap-3">
+            <div class="skeleton h-6 w-9 rounded-md"></div>
+            <div class="flex-1 space-y-2">
+              <div class="skeleton h-5 w-11/12"></div>
+              <div class="skeleton h-4 w-2/3"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <p class="mt-4 text-center text-sm text-slate-500" aria-live="polite">
+        <span class="inline-block w-2 h-2 rounded-full bg-brand-500 animate-pulse mr-1.5"></span>
+        Generating sentences for <b>"${escapeHtml(state.word)}"</b>…
+      </p>
+    </div>`;
+}
+
+function renderError(err) {
+  const isNoKey      = err === 'NO_KEY';
+  const isInvalidKey = err === 'INVALID_KEY';
+  const isRateLimit  = err === 'RATE_LIMIT';
+
+  let title = 'Something went wrong';
+  let msg = err;
+  let cta = `<button id="retryBtn" class="btn-primary">Retry</button>`;
+
+  if (isNoKey) {
+    title = 'Add your Groq API key';
+    msg = 'Chưa có API key. Thêm key vào Settings để bắt đầu dùng — free tier 14,400 requests/ngày.';
+    cta = `<button id="openSettingsFromError" class="btn-primary">Open Settings</button>`;
+  } else if (isInvalidKey) {
+    title = 'Invalid API key';
+    msg = 'Key sai hoặc đã hết hạn. Kiểm tra lại ở console.groq.com/keys.';
+    cta = `<button id="openSettingsFromError" class="btn-primary">Update key</button>`;
+  } else if (isRateLimit) {
+    title = 'Rate limit reached';
+    msg = 'Bạn vừa gọi API quá nhanh. Thử lại sau ít giây, hoặc mở Settings để đổi sang model nhẹ hơn.';
+  }
+
+  return `
+    <div class="max-w-xl mx-auto reveal">
+      <div class="bg-white dark:bg-slate-900 border-2 ${isNoKey ? 'border-brand-200 dark:border-brand-900/40' : 'border-red-200 dark:border-red-900/40'} rounded-2xl p-6">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg ${isNoKey ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'} grid place-items-center shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.41 0z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h2 class="font-semibold">${escapeHtml(title)}</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">${escapeHtml(msg)}</p>
+            <div class="mt-4 flex flex-wrap gap-2">${cta}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderEmpty() {
+  const keyMsg = state.key
+    ? 'Gõ một từ bất kỳ ở trên để bắt đầu.'
+    : 'Đầu tiên — mở <b>Settings</b> ở góc trên phải và dán Groq API key của bạn.';
+  return `
+    <div class="text-center max-w-lg mx-auto py-6 reveal">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-brand-50 dark:bg-brand-900/30 grid place-items-center mb-4">
+        <svg class="w-8 h-8 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+      </div>
+      <p class="text-slate-600 dark:text-slate-400">${keyMsg}</p>
+    </div>`;
+}
+
+function renderRelatedChunks(r) {
+  const chunks = Array.isArray(r.related_chunks) ? r.related_chunks.filter(c => c && c.span) : [];
+  if (!chunks.length) return '';
+  return `
+    <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-card">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-4 h-4 text-brand-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+        <h3 class="font-semibold">Chunks containing <span class="font-display italic text-brand-600 dark:text-brand-400">"${escapeHtml(r.word)}"</span></h3>
+        <span class="ml-auto text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">${chunks.length} · click để đào sâu</span>
+      </div>
+      <ul class="space-y-0.5">
+        ${chunks.map(c => {
+          const t = normalizeChunkType(c.type);
+          const ct = CHUNK_TYPES[t];
+          return `
+            <li>
+              <button class="chunk-row" data-chunk-search="${escapeHtml(c.span || '')}" aria-label="Drill into chunk: ${escapeHtml(c.span || '')}">
+                <span class="chunk-chip cc-${t}" title="${escapeHtml(ct.label)}"><span class="sr-only">Type: </span>${escapeHtml(ct.code)}</span>
+                <div class="flex-1 min-w-0">
+                  <div class="font-display text-[16px] leading-snug font-medium">${escapeHtml(c.span || '')}</div>
+                  ${(c.meaning_vn || c.meaning_en) ? `
+                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      ${c.meaning_vn ? escapeHtml(c.meaning_vn) : ''}
+                      ${c.meaning_vn && c.meaning_en ? `<span class="text-slate-300 dark:text-slate-600 mx-1.5">·</span>` : ''}
+                      ${c.meaning_en ? `<span class="italic">${escapeHtml(c.meaning_en)}</span>` : ''}
+                    </div>` : ''}
+                </div>
+                <span class="arrow text-slate-400 shrink-0"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+              </button>
+            </li>`;
+        }).join('')}
+      </ul>
+    </article>`;
+}
+
+function renderResult(r) {
+  const sentences = [...(r.sentences || [])].sort((a, b) => levelRank(a.level) - levelRank(b.level));
+  const hasChunks = Array.isArray(r.related_chunks) && r.related_chunks.length > 0;
+  const resultCtx = resolveContext(r._contextKey || '');
+  return `
+    <div class="reveal space-y-5">
+      <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-card">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h2 class="font-display text-3xl sm:text-4xl font-semibold tracking-tight">${escapeHtml(r.word)}</h2>
+              <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">${escapeHtml(r.pos || '')}</span>
+              ${resultCtx ? `
+                <span class="ctx-active" title="Context: ${escapeHtml(resultCtx.phrase)}">
+                  <span aria-hidden="true">${resultCtx.emoji}</span>
+                  <span>${escapeHtml(resultCtx.label)}</span>
+                  <button type="button" data-clear-ctx aria-label="Clear context">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </span>` : ''}
+            </div>
+            <div class="mt-2 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+              <span class="font-mono">${escapeHtml(r.ipa || '')}</span>
+              <button data-speak="${escapeHtml(r.word)}" class="w-8 h-8 grid place-items-center rounded-full bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/60" aria-label="Play pronunciation">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 space-y-3">
+          ${(r.definitions || []).map((d, i) => `
+            <div class="flex gap-3">
+              <span class="shrink-0 mt-0.5 w-6 h-6 grid place-items-center rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-500 font-mono">${i+1}</span>
+              <div>
+                <p class="text-[15px] leading-relaxed">${escapeHtml(d.en || '')}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 italic">VN · ${escapeHtml(d.vn || '')}</p>
+              </div>
+            </div>`).join('')}
+        </div>
+      </article>
+
+      ${renderRelatedChunks(r)}
+
+      <div class="flex items-baseline gap-3 pt-1">
+        <h3 class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 font-mono">Example sentences</h3>
+        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+        <span class="text-[11px] font-mono text-slate-400">${sentences.length}</span>
+      </div>
+
+      <ul class="space-y-2.5">
+        ${sentences.map(s => renderSentenceCard(s, r.word)).join('')}
+      </ul>
+
+      <button id="regenBtn" class="w-full py-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900 hover:border-brand-400 inline-flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.55"/><path d="M21 3v6h-6"/></svg>
+        Regenerate with new sentences
+      </button>
+    </div>`;
+}
+
+function levelRank(lvl) {
+  return { A1:1, A2:2, B1:3, B2:4, C1:5, C2:6 }[String(lvl || '').toUpperCase()] || 7;
+}
+
+function renderSentenceCard(s, word) {
+  const saved = isSaved(word, s.en);
+  const type = normalizeChunkType(s.chunk_type);
+  const chunk = CHUNK_TYPES[type];
+  return `
+    <li class="sentence-card"
+        data-en="${escapeHtml(s.en)}"
+        data-vn="${escapeHtml(s.vn || '')}"
+        data-word="${escapeHtml(word)}"
+        data-level="${escapeHtml(s.level || '')}"
+        data-tag="${escapeHtml(s.tag || '')}"
+        data-chunk-type="${type}"
+        data-chunk-span="${escapeHtml(s.chunk_span || '')}">
+      <span class="chunk-chip cc-${type}" title="${escapeHtml(chunk.label)}"><span class="sr-only">Chunk type: </span>${escapeHtml(chunk.code)}</span>
+      <div class="flex-1 min-w-0">
+        <p class="font-display text-[17px] sm:text-lg leading-snug">${highlight(s.en || '', word, s.chunk_span)}</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 italic">${escapeHtml(s.vn || '')}</p>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          ${s.level ? `<span class="level-pill">${escapeHtml(s.level)}</span>` : ''}
+          ${s.tag ? `<span class="tag">#${escapeHtml(s.tag)}</span>` : ''}
+        </div>
+      </div>
+      <div class="flex flex-col gap-0.5 shrink-0">
+        <button class="icon-btn-sm" data-action="speak" aria-label="Play"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="icon-btn-sm" data-action="copy" aria-label="Copy"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+        <button class="icon-btn-sm ${saved ? 'is-on' : ''}" data-action="save" aria-label="${saved ? 'Saved' : 'Save'}">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      </div>
+    </li>`;
+}
+
+function wireSentenceActions(root) {
+  // Word speak button
+  root.querySelector('[data-speak]')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget; speak(btn.dataset.speak);
+  });
+
+  // Clear active context → re-run the current search without context
+  root.querySelector('[data-clear-ctx]')?.addEventListener('click', () => {
+    state.context = '';
+    LS.set('last_context', '');
+    renderContextRow();
+    if (state.word) runSearch(state.word);
+  });
+
+  // Related-chunk drill-down — clicking any chunk row runs a new search on that chunk
+  // (preserves the currently selected context, per PLAN decision).
+  root.querySelectorAll('[data-chunk-search]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const span = btn.dataset.chunkSearch;
+      if (!span) return;
+      const input = document.getElementById('wordInput');
+      if (input) input.value = span;
+      runSearch(span);
+    });
+  });
+
+  // Per-sentence actions
+  root.querySelectorAll('.sentence-card').forEach(card => {
+    const en = card.dataset.en;
+    const vn = card.dataset.vn;
+    const word = card.dataset.word;
+
+    card.querySelector('[data-action="speak"]')?.addEventListener('click', () => speak(en));
+    card.querySelector('[data-action="copy"]')?.addEventListener('click', () => copyText(`${en}\n${vn}`));
+    card.querySelector('[data-action="save"]')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      if (isSaved(word, en)) {
+        unsaveSentence(sentenceId(word, en));
+        btn.classList.remove('is-on');
+        btn.querySelector('svg').setAttribute('fill', 'none');
+        btn.setAttribute('aria-label', 'Save');
+        toast('Removed from saved');
+      } else {
+        // All sentence metadata lives on the card's data-* attributes (set in renderSentenceCard).
+        // Reading from attrs is more robust than re-parsing rendered text.
+        const s = {
+          en, vn,
+          level:      card.dataset.level || '',
+          tag:        card.dataset.tag || '',
+          chunk_type: card.dataset.chunkType || 'word',
+          chunk_span: card.dataset.chunkSpan || '',
+        };
+        saveSentence(word, s);
+        btn.classList.add('is-on');
+        btn.querySelector('svg').setAttribute('fill', 'currentColor');
+        btn.setAttribute('aria-label', 'Saved');
+        toast('Saved');
+      }
+    });
+  });
+
+  // Regenerate button
+  document.getElementById('regenBtn')?.addEventListener('click', () => runSearch(state.word, /*force*/ true));
+}
+
+function renderSavedCard(s) {
+  const type = normalizeChunkType(s.chunk_type);
+  const chunk = CHUNK_TYPES[type];
+  const dueLabel = s.next_due_at
+    ? (s.mastered ? '' : `<span class="tag" title="Next review">${srsStatusOf(s) === 'due' ? 'due now' : formatRelativeFromNow(s.next_due_at)}</span>`)
+    : '';
+  const ctx = resolveContext(s.context || '');
+  const ctxTag = ctx
+    ? `<span class="tag" title="Context when saved">${ctx.emoji} ${escapeHtml(ctx.label)}</span>`
+    : '';
+  return `
+    <div class="sentence-card" data-id="${escapeHtml(s.id)}" data-en="${escapeHtml(s.en)}" data-vn="${escapeHtml(s.vn || '')}" data-word="${escapeHtml(s.word)}">
+      <span class="chunk-chip cc-${type}" title="${escapeHtml(chunk.label)}"><span class="sr-only">Chunk type: </span>${escapeHtml(chunk.code)}</span>
+      <div class="flex-1 min-w-0">
+        <p class="font-display text-[17px] sm:text-lg leading-snug">${highlight(s.en, s.word, s.chunk_span)}</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400 italic">${escapeHtml(s.vn || '')}</p>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          ${renderSrsStatusPill(s)}
+          ${s.level ? `<span class="level-pill">${escapeHtml(s.level)}</span>` : ''}
+          <span class="tag">${escapeHtml(s.word)}</span>
+          ${ctxTag}
+          ${s.tag ? `<span class="tag">#${escapeHtml(s.tag)}</span>` : ''}
+          ${dueLabel}
+          <span class="tag">${new Date(s.savedAt).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-0.5 shrink-0">
+        <button class="icon-btn-sm" data-action="speak" aria-label="Play"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="icon-btn-sm" data-action="copy" aria-label="Copy"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+        <button class="icon-btn-sm" data-action="reset-srs" title="Reset SRS progress" aria-label="Reset SRS"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+        <button class="icon-btn-sm is-on" data-action="remove" aria-label="Remove"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
+      </div>
+    </div>`;
+}
+
+function renderSaved() {
+  const list = document.getElementById('savedList');
+  if (!state.saved.length) {
+    list.innerHTML = `
+      <div class="text-center py-16 text-slate-500 dark:text-slate-400 reveal">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 grid place-items-center mb-3">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <p class="text-sm">Chưa có câu nào được lưu. Mở một từ và bấm biểu tượng bookmark.</p>
+      </div>`;
+    return;
+  }
+
+  const groupBy = state.savedGroupBy || 'type';
+  const groupBtn = (key, label) =>
+    `<button data-group="${key}" class="px-2.5 py-1 rounded ${groupBy === key ? 'bg-white dark:bg-slate-950 shadow-sm font-medium' : 'text-slate-600 dark:text-slate-400'}">${label}</button>`;
+  const toggleHtml = `
+    <div class="flex items-center justify-end mb-4">
+      <div class="inline-flex items-center gap-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
+        ${groupBtn('type', 'By type')}
+        ${groupBtn('status', 'By status')}
+        ${groupBtn('context', 'By context')}
+        ${groupBtn('flat', 'Flat')}
+      </div>
+    </div>`;
+
+  let bodyHtml;
+  if (groupBy === 'flat') {
+    bodyHtml = `<div class="space-y-3">${state.saved.map(renderSavedCard).join('')}</div>`;
+  } else if (groupBy === 'status') {
+    const groups = { due:[], learning:[], later:[], mastered:[] };
+    state.saved.forEach(s => { groups[srsStatusOf(s)].push(s); });
+    const statusOrder = [
+      { key:'due',      label:'Due now',    color:'srs-due' },
+      { key:'learning', label:'Learning',   color:'srs-learning' },
+      { key:'later',    label:'Coming up',  color:'srs-later' },
+      { key:'mastered', label:'Mastered',   color:'srs-mastered' },
+    ];
+    bodyHtml = statusOrder
+      .filter(g => groups[g.key].length)
+      .map(g => `
+        <section class="mb-6">
+          <div class="flex items-center gap-2 mb-2.5">
+            <span class="srs-pill ${g.color}">${escapeHtml(g.label)}</span>
+            <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+            <span class="text-[11px] font-mono text-slate-400">${groups[g.key].length}</span>
+          </div>
+          <div class="space-y-2.5">${groups[g.key].map(renderSavedCard).join('')}</div>
+        </section>`).join('');
+  } else if (groupBy === 'context') {
+    const groups = {};     // preset key or custom phrase → entries
+    const noneBucket = [];
+    state.saved.forEach(s => {
+      if (!s.context) { noneBucket.push(s); return; }
+      const k = s.context;     // unique per preset / custom-text
+      (groups[k] = groups[k] || []).push(s);
+    });
+    // Build sections in preset order first, then custom (by entry count desc), then "no context" last.
+    const presetSections = CONTEXTS
+      .filter(c => groups[c.key]?.length)
+      .map(c => ({ header: `${c.emoji} ${c.label}`, entries: groups[c.key] }));
+    const customKeys = Object.keys(groups)
+      .filter(k => k.startsWith(CUSTOM_PREFIX))
+      .sort((a, b) => groups[b].length - groups[a].length);
+    const customSections = customKeys.map(k => {
+      const phrase = k.slice(CUSTOM_PREFIX.length);
+      return { header: `✎ ${escapeHtml(phrase)}`, entries: groups[k] };
+    });
+    const allSections = [...presetSections, ...customSections];
+    if (noneBucket.length) allSections.push({ header: '— No context', entries: noneBucket });
+    bodyHtml = allSections.map(sec => `
+      <section class="mb-6">
+        <div class="flex items-center gap-2 mb-2.5">
+          <span class="text-xs font-medium text-slate-600 dark:text-slate-300">${sec.header}</span>
+          <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+          <span class="text-[11px] font-mono text-slate-400">${sec.entries.length}</span>
+        </div>
+        <div class="space-y-2.5">${sec.entries.map(renderSavedCard).join('')}</div>
+      </section>`).join('');
+  } else {
+    const groups = {};
+    state.saved.forEach(s => {
+      const t = normalizeChunkType(s.chunk_type);
+      (groups[t] = groups[t] || []).push(s);
+    });
+    bodyHtml = CHUNK_ORDER
+      .filter(t => groups[t]?.length)
+      .map(t => {
+        const ct = CHUNK_TYPES[t];
+        return `
+          <section class="mb-6">
+            <div class="flex items-center gap-2 mb-2.5">
+              <span class="chunk-chip chunk-chip-sm cc-${t}"><span class="sr-only">Type: </span>${escapeHtml(ct.code)}</span>
+              <span class="text-xs font-medium text-slate-600 dark:text-slate-300">${escapeHtml(ct.label)}</span>
+              <div class="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+              <span class="text-[11px] font-mono text-slate-400">${groups[t].length}</span>
+            </div>
+            <div class="space-y-2.5">${groups[t].map(renderSavedCard).join('')}</div>
+          </section>`;
+      })
+      .join('');
+  }
+
+  list.innerHTML = toggleHtml + bodyHtml;
+
+  list.querySelectorAll('[data-group]').forEach(b => b.addEventListener('click', () => {
+    state.savedGroupBy = b.dataset.group;
+    LS.set('savedGroupBy', state.savedGroupBy);
+    renderSaved();
+  }));
+
+  list.querySelectorAll('.sentence-card').forEach(card => {
+    const id = card.dataset.id;
+    const en = card.dataset.en;
+    const vn = card.dataset.vn;
+    card.querySelector('[data-action="speak"]')?.addEventListener('click', () => speak(en));
+    card.querySelector('[data-action="copy"]')?.addEventListener('click', () => copyText(`${en}\n${vn}`));
+    card.querySelector('[data-action="reset-srs"]')?.addEventListener('click', () => {
+      if (!confirm('Reset SRS progress for this sentence? It will be due again today.')) return;
+      const s = state.saved.find(x => x.id === id);
+      if (!s) return;
+      s.ease = SRS.EASE_INIT;
+      s.interval_days = 0;
+      s.reps = 0;
+      s.next_due_at = Date.now();
+      s.last_reviewed_at = 0;
+      s.mastered = false;
+      LS.set('saved', state.saved);
+      renderSaved();
+      updateSavedBadge();
+      toast('SRS reset');
+    });
+    card.querySelector('[data-action="remove"]')?.addEventListener('click', () => {
+      // Also drop from current review queue if present.
+      if (state.review.queue.includes(id)) {
+        state.review.queue = state.review.queue.filter(qid => qid !== id);
+      }
+      unsaveSentence(id);
+      renderSaved();
+      toast('Removed');
+    });
+  });
+}
+
+// =====================================================================
+// REVIEW VIEW (SRS)
+// =====================================================================
+function renderSrsStatusPill(s) {
+  const status = srsStatusOf(s);
+  const labels = { due:'Due', learning:'Learning', later:'Later', mastered:'Mastered ✓' };
+  return `<span class="srs-pill srs-${status}">${labels[status]}</span>`;
+}
+
+function renderReview() {
+  const root = document.getElementById('reviewView');
+
+  // Start a session if entering review fresh (no active queue OR previous session completed).
+  const sessionFinished = state.review.queue.length > 0 && state.review.index >= state.review.queue.length;
+  if (state.review.queue.length === 0) {
+    startReview();
+  }
+
+  // Empty state — no cards due
+  if (state.review.queue.length === 0) {
+    const next = nextDueAt();
+    const masteredN = masteredCount();
+    const learningN = learningCount();
+    root.innerHTML = `
+      <div class="max-w-xl mx-auto text-center py-10 reveal">
+        <div class="w-20 h-20 mx-auto rounded-2xl bg-brand-100 dark:bg-brand-900/40 grid place-items-center mb-5">
+          <svg class="w-10 h-10 text-brand-600 dark:text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight">All caught up!</h2>
+        <p class="mt-2 text-slate-600 dark:text-slate-400">
+          ${next
+            ? `Chưa có câu nào đến hạn. Lần ôn kế tiếp: <b>${formatRelativeFromNow(next)}</b>.`
+            : (state.saved.length === 0
+               ? 'Chưa có câu nào được lưu. Save vài câu từ kết quả search trước đã!'
+               : 'Tất cả các câu đã save đều đang trong giai đoạn nghỉ. Quay lại sau.')}
+        </p>
+        <div class="mt-6 grid grid-cols-3 gap-3 max-w-md mx-auto text-sm">
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-2xl font-display font-semibold">${state.saved.length}</div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">Saved</div>
+          </div>
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-2xl font-display font-semibold text-amber-600 dark:text-amber-400">${learningN}</div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">Learning</div>
+          </div>
+          <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-2xl font-display font-semibold text-brand-600 dark:text-brand-400">${masteredN}</div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">Mastered</div>
+          </div>
+        </div>
+        <button data-goto="home" class="mt-8 btn-primary">Explore more words →</button>
+      </div>`;
+    root.querySelector('[data-goto="home"]')?.addEventListener('click', () => { state.view = 'home'; render(); });
+    return;
+  }
+
+  // Session completion screen
+  if (sessionFinished) {
+    const { completed, correct } = state.review;
+    const accuracy = completed ? Math.round((correct / completed) * 100) : 0;
+    const firstTodaySession = Object.keys(state.activity).length === 1; // approx
+    root.innerHTML = `
+      <div class="max-w-xl mx-auto text-center py-10 reveal">
+        <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 grid place-items-center mb-5 text-white text-3xl">🔥</div>
+        <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Xong phiên ôn!</h2>
+        <p class="mt-2 text-slate-600 dark:text-slate-400">
+          Bạn đã ôn <b>${completed}</b> câu, nhớ <b>${correct}</b> (${accuracy}%).
+          ${currentStreak() > 0 ? `Streak hiện tại: <b>${currentStreak()} ngày</b> 🔥` : ''}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+          <button data-goto="home" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium">Về Home</button>
+          <button data-again class="btn-primary">Ôn thêm</button>
+        </div>
+      </div>`;
+    root.querySelector('[data-goto="home"]')?.addEventListener('click', () => {
+      state.review = { queue:[], index:0, revealed:false, completed:0, correct:0 };
+      state.view = 'home'; render();
+    });
+    root.querySelector('[data-again]')?.addEventListener('click', () => {
+      startReview();
+      render();
+    });
+    return;
+  }
+
+  // Active card
+  const card = currentReviewCard();
+  if (!card) { // safety
+    state.review = { queue:[], index:0, revealed:false, completed:0, correct:0 };
+    render();
+    return;
+  }
+  const total = state.review.queue.length;
+  const progress = state.review.index;
+  const pct = Math.round((progress / total) * 100);
+  const revealed = state.review.revealed;
+  const type = normalizeChunkType(card.chunk_type);
+  const chunk = CHUNK_TYPES[type];
+
+  root.innerHTML = `
+    <div class="max-w-2xl mx-auto reveal">
+      <!-- Progress -->
+      <div class="flex items-center gap-3 mb-5">
+        <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">${progress + 1} / ${total}</span>
+        <div class="flex-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div class="h-full bg-brand-500 transition-all duration-300" style="width: ${pct}%"></div>
+        </div>
+        <button id="exitReview" class="btn-ghost" aria-label="Exit review" title="Esc">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Flashcard -->
+      <div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-card min-h-[260px]">
+        <div class="flex items-start gap-3 mb-4">
+          <span class="chunk-chip cc-${type}" title="${escapeHtml(chunk.label)}">${escapeHtml(chunk.code)}</span>
+          ${card.level ? `<span class="level-pill">${escapeHtml(card.level)}</span>` : ''}
+          <span class="ml-auto text-[11px] font-mono text-slate-400">${escapeHtml(card.word)}</span>
+        </div>
+
+        <p class="font-display text-xl sm:text-2xl leading-snug">${highlight(card.en || '', card.word, card.chunk_span)}</p>
+
+        ${revealed ? `
+          <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+            <p class="text-base text-slate-700 dark:text-slate-300 italic">${escapeHtml(card.vn || '')}</p>
+            <div class="flex items-center gap-3 pt-1">
+              <button id="speakCard" class="btn-ghost" aria-label="Play audio">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+              <span class="text-[11px] font-mono text-slate-400">Reps: ${card.reps} · Ease: ${(card.ease ?? SRS.EASE_INIT).toFixed(2)} · Interval: ${formatInterval(card.interval_days)}</span>
+            </div>
+          </div>
+        ` : `
+          <button id="revealBtn" class="mt-6 w-full py-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-brand-400 transition">
+            Tap để xem nghĩa · <kbd class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Space</kbd>
+          </button>
+        `}
+      </div>
+
+      <!-- Rating buttons (only after reveal) -->
+      ${revealed ? `
+        <div class="mt-4 grid grid-cols-4 gap-2">
+          <button class="rate-btn rate-again" data-rate="again">
+            <span class="rate-label">Again</span>
+            <span class="rate-interval">${projectInterval(card, 'again')}</span>
+            <span class="rate-shortcut">1</span>
+          </button>
+          <button class="rate-btn rate-hard" data-rate="hard">
+            <span class="rate-label">Hard</span>
+            <span class="rate-interval">${projectInterval(card, 'hard')}</span>
+            <span class="rate-shortcut">2</span>
+          </button>
+          <button class="rate-btn rate-good" data-rate="good">
+            <span class="rate-label">Good</span>
+            <span class="rate-interval">${projectInterval(card, 'good')}</span>
+            <span class="rate-shortcut">3</span>
+          </button>
+          <button class="rate-btn rate-easy" data-rate="easy">
+            <span class="rate-label">Easy</span>
+            <span class="rate-interval">${projectInterval(card, 'easy')}</span>
+            <span class="rate-shortcut">4</span>
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- Help -->
+      <p class="mt-5 text-center text-[11px] font-mono text-slate-400">
+        <kbd class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Space</kbd> reveal ·
+        <kbd class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">1-4</kbd> rate ·
+        <kbd class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Esc</kbd> exit
+      </p>
+    </div>`;
+
+  // Wire handlers
+  root.querySelector('#exitReview')?.addEventListener('click', () => {
+    state.review = { queue:[], index:0, revealed:false, completed:0, correct:0 };
+    state.view = 'home'; render();
+  });
+  root.querySelector('#revealBtn')?.addEventListener('click', () => { state.review.revealed = true; render(); });
+  root.querySelector('#speakCard')?.addEventListener('click', () => speak(card.en));
+  root.querySelectorAll('[data-rate]').forEach(btn => btn.addEventListener('click', () => {
+    advanceReview(btn.dataset.rate);
+    render();
+  }));
+}
+
+// Keyboard shortcuts for review view — space to reveal, 1-4 to rate, Esc to exit.
+document.addEventListener('keydown', (e) => {
+  if (state.view !== 'review') return;
+  // Ignore when typing in a real input/textarea
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+  if (e.key === ' ' && !state.review.revealed) {
+    e.preventDefault();
+    state.review.revealed = true;
+    render();
+    return;
+  }
+  if (state.review.revealed) {
+    const map = { '1':'again', '2':'hard', '3':'good', '4':'easy' };
+    if (map[e.key]) {
+      e.preventDefault();
+      advanceReview(map[e.key]);
+      render();
+      return;
+    }
+  }
+  if (e.key === 'Escape') {
+    state.review = { queue:[], index:0, revealed:false, completed:0, correct:0 };
+    state.view = 'home'; render();
+  }
+});
+
+// =====================================================================
+// ACTIONS
+// =====================================================================
+async function runSearch(word, force = false) {
+  const w = String(word || '').trim();
+  if (!w) return;
+  if (!state.key) { state.error = 'NO_KEY'; render(); return; }
+
+  state.word = w;
+  state.loading = true;
+  state.error = null;
+  state.result = null;
+  addHistory(w);
+  markActive();
+  render();
+
+  try {
+    const res = await generateSentences(w, state.context);
+    state.result = res;
+    // Remember the context that produced this result — needed so the result header
+    // reflects the same context even if the user changes selection before re-rendering.
+    state.result._contextKey = state.context;
+    bumpContextUsage(state.context);
+  } catch (err) {
+    state.error = err.message || String(err);
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+// =====================================================================
+// SETTINGS MODAL
+// =====================================================================
+function openSettings() {
+  document.getElementById('keyInput').value = state.key;
+  document.getElementById('modelSelect').value = state.model;
+
+  // Reminder section
+  const toggle  = document.getElementById('notifToggle');
+  const opts    = document.getElementById('notifOpts');
+  const timeIn  = document.getElementById('notifTime');
+  const statusEl= document.getElementById('notifStatus');
+  toggle.checked = !!state.notifEnabled;
+  opts.classList.toggle('hidden', !state.notifEnabled);
+  timeIn.value = state.notifTime || NOTIF.DEFAULT_TIME;
+  refreshNotifStatus();
+
+  if (!canNotify()) toggle.disabled = true;
+
+  document.getElementById('settingsModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('keyInput').focus(), 50);
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function refreshNotifStatus() {
+  const el = document.getElementById('notifStatus');
+  if (!el) return;
+  if (!canNotify()) {
+    el.textContent = 'Browser này không hỗ trợ Notification API.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    el.textContent = '⚠️ Permission đã bị deny — mở site settings của browser để reset.';
+    return;
+  }
+  if (state.notifEnabled) {
+    const t = new Date(nextFireTime(state.notifTime));
+    el.textContent = `✓ Nhắc tiếp theo: ${t.toLocaleString()}`;
+    return;
+  }
+  el.textContent = '';
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('closeSettings').addEventListener('click', closeSettings);
+document.getElementById('cancelSettings').addEventListener('click', closeSettings);
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target.id === 'settingsModal') closeSettings();
+});
+
+document.getElementById('saveSettings').addEventListener('click', () => {
+  const key = document.getElementById('keyInput').value.trim();
+  const model = document.getElementById('modelSelect').value;
+  const newTime = document.getElementById('notifTime').value || NOTIF.DEFAULT_TIME;
+  state.key = key;
+  state.model = model;
+  LS.set('groq_key', key);
+  LS.set('groq_model', model);
+  // Reschedule reminders only if time changed (and toggle is on)
+  if (newTime !== state.notifTime) {
+    state.notifTime = newTime;
+    LS.set('notif_time', newTime);
+    if (state.notifEnabled) scheduleNextNotif();
+  }
+  document.getElementById('statusPill').textContent = `Groq · ${model.split('/').pop()}`;
+  closeSettings();
+  toast('Settings saved');
+  // If we were blocked on missing key and user just entered one → auto-retry
+  if (state.error === 'NO_KEY' && state.word) runSearch(state.word);
+  else render();
+});
+
+// Reminder toggle
+document.getElementById('notifToggle').addEventListener('change', async (e) => {
+  if (e.target.checked) {
+    const ok = await enableNotifications();
+    if (!ok) e.target.checked = false;
+    document.getElementById('notifOpts').classList.toggle('hidden', !e.target.checked);
+  } else {
+    disableNotifications();
+    document.getElementById('notifOpts').classList.add('hidden');
+  }
+  refreshNotifStatus();
+});
+
+// Test notification button
+document.getElementById('notifTestBtn')?.addEventListener('click', () => {
+  if (!canNotify()) { toast('Browser không hỗ trợ'); return; }
+  if (Notification.permission !== 'granted') { toast('Cần bật notifications trước'); return; }
+  fireDueNotif();
+  toast('Đã gửi notification test');
+});
+
+document.getElementById('toggleKeyVis').addEventListener('click', () => {
+  const input = document.getElementById('keyInput');
+  input.type = input.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('resetOrderBtn').addEventListener('click', () => {
+  if (!confirm('Reset thứ tự chip context về mặc định? Saved sentences và mọi dữ liệu khác vẫn giữ nguyên.')) return;
+  LS.del('context_usage');
+  LS.del('context_usage_decay_at');
+  renderContextRow();
+  toast('Chip ordering reset');
+});
+
+// Keys owned by LinguaSpark — any other localStorage key is left untouched during import.
+// `recent_random_*` keys are handled separately via a prefix scan.
+const APP_LS_KEYS = [
+  'groq_key','groq_model','saved','history','activity','savedGroupBy',
+  'notif_enabled','notif_time','last_context','context_usage',
+  'context_usage_decay_at','lingua_theme',
+];
+
+function exportAllData({ includeKey = true } = {}) {
+  if (includeKey) {
+    if (!confirm('File backup sẽ chứa API key của bạn. Chỉ giữ riêng tư, ĐỪNG chia sẻ công khai. Tiếp tục?')) return;
+  }
+
+  const payload = {
+    __app: 'linguaspark',
+    __version: 1,
+    __exported_at: new Date().toISOString(),
+    __includes_key: includeKey,
+  };
+  APP_LS_KEYS.forEach(k => {
+    if (!includeKey && k === 'groq_key') return;
+    const raw = localStorage.getItem(k);
+    if (raw == null) return;
+    try { payload[k] = JSON.parse(raw); }
+    catch { payload[k] = raw; }
+  });
+  // Include all per-context recent-random pools.
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('recent_random_')) {
+      try { payload[k] = JSON.parse(localStorage.getItem(k)); } catch {}
+    }
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const suffix = includeKey ? '' : '-nokey';
+  a.download = `linguaspark-backup${suffix}-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(includeKey ? 'Backup exported' : 'Safe backup exported (no API key)');
+}
+
+function importAllData(file) {
+  const reader = new FileReader();
+  reader.onerror = () => toast('Không đọc được file');
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch { toast('File không phải JSON hợp lệ'); return; }
+
+    if (!data || typeof data !== 'object' || data.__app !== 'linguaspark') {
+      toast('File không phải backup của LinguaSpark');
+      return;
+    }
+
+    const n = Object.keys(data).filter(k => !k.startsWith('__')).length;
+    if (!confirm(`Import ${n} keys từ backup — sẽ GHI ĐÈ dữ liệu hiện tại. Tiếp tục?`)) return;
+
+    // Clear pre-existing recent_random_* pools so stale entries don't linger after import.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('recent_random_')) LS.del(k);
+    }
+    // Also clear app-owned keys not present in the backup so import is a true restore,
+    // not a merge (prevents stale fields from a pre-backup state leaking through).
+    APP_LS_KEYS.forEach(k => { if (!(k in data)) LS.del(k); });
+
+    Object.entries(data).forEach(([k, v]) => {
+      if (k.startsWith('__')) return;    // metadata keys
+      LS.set(k, v);
+    });
+
+    toast('Import OK — reload…');
+    setTimeout(() => location.reload(), 700);
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('exportDataBtn').addEventListener('click', () => exportAllData({ includeKey: true }));
+document.getElementById('exportSafeBtn').addEventListener('click', () => exportAllData({ includeKey: false }));
+document.getElementById('importDataBtn').addEventListener('click', () => {
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (file) importAllData(file);
+  e.target.value = '';  // allow re-importing the same file later
+});
+
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  if (!confirm('Xóa tất cả saved sentences, history, activity và API key?')) return;
+  const baseKeys = [
+    'groq_key','groq_model','saved','history','activity','savedGroupBy',
+    'notif_enabled','notif_time',
+    'last_context','context_usage','context_usage_decay_at',
+  ];
+  baseKeys.forEach(LS.del);
+  // Per-context recent-random pools — purge every variant (preset and custom).
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('recent_random_')) LS.del(k);
+  }
+  cancelNotif();
+  location.reload();
+});
+
+document.getElementById('exportBtn')?.addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state.saved, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `linguaspark-saved-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// =====================================================================
+// WIRE SEARCH + NAV + THEME
+// =====================================================================
+document.getElementById('searchForm').addEventListener('submit', () => {
+  runSearch(document.getElementById('wordInput').value);
+});
+document.getElementById('wordInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); runSearch(e.target.value); }
+});
+
+document.querySelectorAll('[data-view]').forEach(b => {
+  b.addEventListener('click', () => { state.view = b.dataset.view; render(); });
+});
+
+// Theme
+const htmlEl = document.documentElement;
+function applyTheme(mode) {
+  LS.set('lingua_theme', mode);
+  const isDark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  htmlEl.classList.toggle('dark', isDark);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('is-on', b.dataset.theme === mode));
+}
+document.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.theme)));
+applyTheme(LS.get('lingua_theme', 'auto'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (LS.get('lingua_theme', 'auto') === 'auto') applyTheme('auto');
+});
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // ⌘/Ctrl + K focuses search
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    state.view = 'home'; render();
+    document.getElementById('wordInput').focus();
+    document.getElementById('wordInput').select();
+  }
+  // Esc closes settings
+  if (e.key === 'Escape' && !document.getElementById('settingsModal').classList.contains('hidden')) {
+    closeSettings();
+  }
+  // "R" triggers a random word — only on Home view and not while typing in an input.
+  if (e.key === 'r' || e.key === 'R') {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (state.view !== 'home' || state.randomLoading) return;
+    e.preventDefault();
+    randomizeWord();
+  }
+});
+
+// =====================================================================
+// INIT
+// =====================================================================
+updateSavedBadge();
+document.getElementById('statusPill').textContent = `Groq · ${state.model.split('/').pop()}`;
+if (!state.key) state.error = 'NO_KEY';
+render();
+
+// Resume daily-reminder schedule if still enabled + permitted.
+// (localStorage carries the preference; the actual setTimeout was lost when the tab closed.)
+if (state.notifEnabled && canNotify() && Notification.permission === 'granted') {
+  scheduleNextNotif();
+} else if (state.notifEnabled && canNotify() && Notification.permission !== 'granted') {
+  // Permission revoked externally between sessions — downgrade silently.
+  state.notifEnabled = false;
+  LS.set('notif_enabled', false);
+}
+
+// =====================================================================
+// DRAG-AND-DROP: drop a backup file anywhere on the window to import
+// =====================================================================
+(function wireDragAndDrop() {
+  const overlay = document.getElementById('dropOverlay');
+  let dragDepth = 0;   // guards against the dragleave flicker between child elements
+
+  const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+
+  window.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    overlay.classList.remove('hidden');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) overlay.classList.add('hidden');
+  });
+  window.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    overlay.classList.add('hidden');
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!/\.json$/i.test(file.name) && file.type !== 'application/json') {
+      toast('Chỉ nhận file .json');
+      return;
+    }
+    importAllData(file);
+  });
+})();
+</script>
+
+</body>
+</html>
