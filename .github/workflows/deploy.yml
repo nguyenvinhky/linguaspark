@@ -1,5 +1,10 @@
 name: Deploy app to GitHub Pages
 
+# ONE-TIME SETUP (required before the first run):
+#   Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions"
+# (Auto-enablement via actions/configure-pages needs write-capable GITHUB_TOKEN
+#  which isn't the default on new repos; manual enable is the reliable path.)
+#
 # Rebuild only when the app content or this workflow changes.
 # Design artifacts (design/) and PLAN.md are not shipped to the site.
 on:
@@ -41,10 +46,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          # Auto-enable Pages on first run so the repo doesn't need a manual
-          # "Settings → Pages → Source: GitHub Actions" step.
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
