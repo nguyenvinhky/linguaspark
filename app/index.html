@@ -2,8 +2,21 @@
 <html lang="en" class="h-full">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>LinguaSpark — Personal English learner</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#10b981" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" type="image/svg+xml" href="./icon.svg" />
+
+<!-- iOS "Add to Home Screen" -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="LinguaSpark" />
+<link rel="apple-touch-icon" href="./icon.svg" />
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -392,7 +405,11 @@
       </div>
 
       <div class="mt-6 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 text-xs">
+        <div class="flex items-center gap-3 text-xs flex-wrap">
+          <span id="swVersion" class="text-[10px] font-mono text-slate-400 dark:text-slate-500" title="Current service worker cache version">—</span>
+          <span class="text-slate-300 dark:text-slate-600">·</span>
+          <button id="checkUpdateBtn" class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:underline">Check for updates</button>
+          <span class="text-slate-300 dark:text-slate-600">·</span>
           <button id="resetOrderBtn" class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:underline">Reset chip ordering</button>
           <span class="text-slate-300 dark:text-slate-600">·</span>
           <button id="clearDataBtn" class="text-red-600 dark:text-red-400 hover:underline">Clear all saved data</button>
@@ -2242,8 +2259,81 @@ function openSettings() {
 
   if (!canNotify()) toggle.disabled = true;
 
+  // Fetch current SW version asynchronously — don't block modal open.
+  refreshSwVersionLabel();
+
   document.getElementById('settingsModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('keyInput').focus(), 50);
+}
+
+// Change this if you fork — drives the commit link beside the version label.
+const GITHUB_REPO = 'nguyenvinhky/linguaspark';
+
+// Ask the active service worker for its CACHE_NAME (+ commit SHA) via MessageChannel.
+// Resolves to { version, commit } or null if SW is unavailable / unresponsive.
+function getSwVersion() {
+  return new Promise((resolve) => {
+    const sw = navigator.serviceWorker?.controller;
+    if (!sw) { resolve(null); return; }
+    const ch = new MessageChannel();
+    const timer = setTimeout(() => resolve(null), 1500);
+    ch.port1.onmessage = (e) => {
+      clearTimeout(timer);
+      const d = e.data || {};
+      resolve(d.version ? { version: d.version, commit: d.commit || '' } : null);
+    };
+    sw.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+  });
+}
+
+async function refreshSwVersionLabel() {
+  const el = document.getElementById('swVersion');
+  if (!el) return;
+  const info = await getSwVersion();
+  if (!info) {
+    el.textContent = '—';
+    el.title = 'Service worker not active';
+    return;
+  }
+  const { version: v, commit } = info;
+
+  // Track when this SW version first became active on THIS device.
+  // When the SW reports a new version (controllerchange happened + reload),
+  // reset the timestamp so "updated Nh ago" stays accurate.
+  // Using version+commit as the key so a re-deploy under the same cache
+  // version still counts as a new activation.
+  const fingerprint = `${v}@${commit}`;
+  const lastSeen = LS.get('sw_last_version', null);
+  let activatedAt = LS.get('sw_activated_at', null);
+  if (lastSeen !== fingerprint || !activatedAt) {
+    activatedAt = Date.now();
+    LS.set('sw_last_version', fingerprint);
+    LS.set('sw_activated_at', activatedAt);
+  }
+
+  const shortVer = v.replace(/^linguaspark-/, '');
+  const relTime = formatRelativeFromNow(activatedAt);
+  // Only link when the workflow successfully substituted a real SHA (40 hex chars).
+  const isRealSha = /^[0-9a-f]{7,40}$/i.test(commit);
+  const shortSha = isRealSha ? commit.slice(0, 7) : '';
+  const title = [
+    `Service worker cache: ${v}`,
+    isRealSha ? `Commit: ${commit}` : 'Commit: (local/dev — no SHA injected)',
+    `Activated: ${new Date(activatedAt).toLocaleString()}`,
+  ].join('\n');
+
+  // Replace the element with a link when a real SHA is present; otherwise plain span.
+  const text = shortSha
+    ? `${shortVer} @ ${shortSha} · updated ${relTime}`
+    : `${shortVer} · updated ${relTime}`;
+
+  if (isRealSha) {
+    const href = `https://github.com/${GITHUB_REPO}/commit/${commit}`;
+    el.innerHTML = `<a href="${href}" target="_blank" rel="noopener" class="hover:underline hover:text-slate-700 dark:hover:text-slate-300">${escapeHtml(text)}</a>`;
+  } else {
+    el.textContent = text;
+  }
+  el.title = title;
 }
 function closeSettings() {
   document.getElementById('settingsModal').classList.add('hidden');
@@ -2329,6 +2419,37 @@ document.getElementById('resetOrderBtn').addEventListener('click', () => {
   LS.del('context_usage_decay_at');
   renderContextRow();
   toast('Chip ordering reset');
+});
+
+// Manual update check — user-initiated alternative to the automatic 24h poll.
+document.getElementById('checkUpdateBtn').addEventListener('click', async () => {
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
+    toast('Service worker không khả dụng trong môi trường này');
+    return;
+  }
+  const btn = document.getElementById('checkUpdateBtn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) { toast('Chưa đăng ký service worker — thử reload trang'); return; }
+    await reg.update();
+    // Give the browser a beat to transition states if a new version was found.
+    await new Promise(r => setTimeout(r, 400));
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      showUpdatePrompt(reg.waiting);
+    } else if (reg.installing) {
+      toast('Downloading update…');
+    } else {
+      toast('Đã là phiên bản mới nhất ✓');
+    }
+  } catch (err) {
+    toast('Check thất bại: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 });
 
 // Keys owned by LinguaSpark — any other localStorage key is left untouched during import.
@@ -2429,6 +2550,7 @@ document.getElementById('clearDataBtn').addEventListener('click', () => {
     'groq_key','groq_model','saved','history','activity','savedGroupBy',
     'notif_enabled','notif_time',
     'last_context','context_usage','context_usage_decay_at',
+    'sw_last_version','sw_activated_at',
   ];
   baseKeys.forEach(LS.del);
   // Per-context recent-random pools — purge every variant (preset and custom).
@@ -2518,6 +2640,66 @@ if (state.notifEnabled && canNotify() && Notification.permission === 'granted') 
   // Permission revoked externally between sessions — downgrade silently.
   state.notifEnabled = false;
   LS.set('notif_enabled', false);
+}
+
+// Register the service worker so the app is installable + offline-capable.
+// Skipped on file:// (browsers reject SW registration there anyway).
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', async () => {
+    // One-shot reload guard — controllerchange fires once the newly-activated SW
+    // takes over; we reload exactly once so users land on the updated shell.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+
+      // A worker may already be waiting from a previous visit.
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        showUpdatePrompt(reg.waiting);
+      }
+
+      reg.addEventListener('updatefound', () => {
+        const fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener('statechange', () => {
+          if (fresh.state === 'installed' && navigator.serviceWorker.controller) {
+            // There is an active controller → this is an UPGRADE, not first install.
+            showUpdatePrompt(fresh);
+          }
+        });
+      });
+    } catch (err) {
+      console.warn('SW registration failed:', err);
+    }
+  });
+}
+
+function showUpdatePrompt(worker) {
+  // Only one banner at a time.
+  if (document.getElementById('updatePrompt')) return;
+
+  const el = document.createElement('div');
+  el.id = 'updatePrompt';
+  el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-pop reveal text-sm';
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `
+    <span>✨ New version available</span>
+    <button id="updateReloadBtn" type="button" class="px-3 py-1 rounded-md bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700">Reload</button>
+    <button id="updateDismissBtn" type="button" class="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-200 dark:hover:text-slate-700">Later</button>
+  `;
+  document.body.appendChild(el);
+
+  el.querySelector('#updateReloadBtn').addEventListener('click', () => {
+    el.remove();
+    worker.postMessage({ type: 'SKIP_WAITING' });
+    // The controllerchange listener above will trigger the actual reload.
+  });
+  el.querySelector('#updateDismissBtn').addEventListener('click', () => el.remove());
 }
 
 // =====================================================================

@@ -38,10 +38,13 @@ jobs:
 
       - name: Prepare site artifact
         # Copy app/ into _site/ and disable Jekyll so any future underscore-
-        # prefixed files are served as-is.
+        # prefixed files are served as-is. Inject the deploy commit SHA into
+        # sw.js so the app can render a "version" link pointing to the exact
+        # commit that produced the running deploy.
         run: |
           mkdir -p _site
           cp -r app/. _site/
+          sed -i "s/__COMMIT_SHA__/${GITHUB_SHA}/" _site/sw.js
           touch _site/.nojekyll
 
       - name: Configure Pages

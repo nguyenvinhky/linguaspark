@@ -1,0 +1,27 @@
+{
+  "name": "LinguaSpark",
+  "short_name": "LinguaSpark",
+  "description": "Personal English vocabulary learner with SRS and chunk discovery",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#10b981",
+  "background_color": "#f8fafc",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
